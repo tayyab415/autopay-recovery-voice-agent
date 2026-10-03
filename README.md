@@ -74,15 +74,14 @@ Bolna payload construction (no network), all 10 simulator personas, and UI servi
 
 ## Demo Evidence
 
-- `demo/recordings.json` — per-customer tool/reply/status records, explicitly flagged
-  `"simulated_offline": true`. **No live Bolna calls were placed in this batch, so there
-  are no live execution IDs or recording URLs** (fields present as `null` by design,
-  never invented).
+- `demo/recordings.json` — per-customer tool/reply/status records from the offline
+  simulator, explicitly flagged `"simulated_offline": true`.
 - `demo/transcripts/sample_calls.md` — readable offline dialogue logs, labeled simulated.
-
-To capture live evidence later: set `BOLNA_API_KEY`, run
-`python3 -m src.runner call --customer <ID> --phone <number>`, and append the returned
-execution ID / recording URL alongside — not in place of — the simulated records.
+- `demo/live_call_cust01.json`, `demo/live_call_cust01_take2.json`,
+  `demo/live_call_cust02.json`, `demo/live_call_cust03_proof.json` — four real Bolna
+  executions against a test number the developer controls, with transcripts and
+  recording URLs. The CUST-03 proof call fired `POST /api/tools/send-link` against
+  the public gateway (logged 200) and flipped the merchant DB to `LINK_SENT`.
 
 ## Limitations & Production Recommendations
 
