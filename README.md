@@ -42,6 +42,13 @@ Two layers, per the design spec:
 | CUST-09 | Harish Reddy | HARD_REFUSAL_HOSTILE | Honor do-not-call instantly, de-escalate |
 | CUST-10 | Neha Joshi | VOICEMAIL_NO_ANSWER | Low-pressure retry link for missed contact |
 
+## Live Demo (hosted)
+
+Console + tools + mock checkout, running on AWS: http://3.229.250.217:8000
+
+Open it, hit Trigger on any row, Send payment link, open the checkout URL, tap Pay.
+No keys or phone needed. The instance is a demo box and may be stopped after review.
+
 ## Setup & Run (< 2 minutes)
 
 ```bash
