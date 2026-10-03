@@ -1,0 +1,15 @@
+{
+  "notice": "LIVE Bolna call - real execution, test number controlled by developer",
+  "execution_id": "bcb56a53-28f9-4615-ba46-88d1255edce4",
+  "agent_id": "9cca9967-dce2-49f0-a148-2e3facf3afae",
+  "status": "completed",
+  "customer_id": "CUST-01",
+  "to_number": "+917007623382",
+  "from_number": "+918035735856",
+  "conversation_duration_sec": 54.0,
+  "total_cost": 6.0,
+  "recording_url": "https://api.bolna.ai/recordings/call/bcb56a53-28f9-4615-ba46-88d1255edce4",
+  "hangup_by": "Callee",
+  "transcript": "assistant: Hi Priya Sharma! This is NexusCloud calling about your recent autopay of Rs. 12499.0, which could not be debited. Do you have a quick minute?\nuser:  who's this\nassistant:  This is NexusCloud's recovery team calling about a failed auto-debit of Rs. 12499.0 on your account due to an expired card. Can I assist you with updating your payment?\nuser:  what was the product about\nassistant:  The payment was for your NexusCloud subscription services. Would you like me to send you a payment link to clear the pending amount?\nuser:  uh you know what thank you\nassistant: You're welcome! If you need any help later, feel free to reach out. Have a great day!\n",
+  "created_at": "2026-10-03T21:57:55.612230+00:00"
+}
