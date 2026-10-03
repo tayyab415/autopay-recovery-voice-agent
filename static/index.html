@@ -58,12 +58,18 @@
     <h2 id="modal-title">Trigger recovery</h2>
     <p id="modal-customer"></p>
     <input id="modal-phone" placeholder="Test phone (optional, for Live Call)" style="width:100%;padding:8px;margin-bottom:12px;" />
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+      <button class="btn-primary" id="btn-tool-link">Send payment link</button>
+      <button class="btn-primary" id="btn-tool-reschedule">Reschedule +5d</button>
+      <button class="btn-primary" id="btn-tool-waive">Waive fee</button>
+      <button class="btn-primary" id="btn-tool-escalate">Escalate</button>
+    </div>
     <div style="display:flex;gap:8px;">
-      <button class="btn-primary" id="btn-run-simulation">Run Simulation</button>
+      <button class="btn-ghost" id="btn-run-simulation">Run Simulation</button>
       <button class="btn-ghost" id="btn-live-call">Live Call</button>
       <button class="btn-ghost" id="btn-modal-close">Close</button>
     </div>
-    <pre id="modal-result" style="white-space:pre-wrap;"></pre>
+    <div id="modal-result" style="white-space:pre-wrap;"></div>
   </div>
 </div>
 

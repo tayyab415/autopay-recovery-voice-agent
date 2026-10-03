@@ -51,6 +51,44 @@ function openModal(customerId) {
 
 function closeModal() { document.getElementById("trigger-modal").classList.remove("open"); }
 
+async function runTool(tool) {
+  const id = selectedCustomer.customer_id;
+  const routes = {
+    link: ["/api/tools/send-link", { customer_id: id, channel: "sms" }],
+    reschedule: ["/api/tools/reschedule", { customer_id: id, target_date: plusDays(5) }],
+    waive: ["/api/tools/waive-fee", { customer_id: id }],
+    escalate: ["/api/tools/escalate-dispute", { customer_id: id, reason: "Raised from console" }],
+  };
+  const [url, body] = routes[tool];
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  const box = document.getElementById("modal-result");
+  if (!res.ok) {
+    box.innerHTML = `Tool rejected (${res.status}): ${escapeHtml(data.detail || JSON.stringify(data))}`;
+  } else if (data.checkout_url) {
+    box.innerHTML = `Link sent. Customer pays here: <a href="${data.checkout_url}" target="_blank" rel="noopener">${escapeHtml(data.checkout_url)}</a>`;
+  } else {
+    box.textContent = JSON.stringify(data, null, 2);
+  }
+  await loadCustomers();
+  selectedCustomer = customers.find((c) => c.customer_id === id);
+  openDrawer(id);
+}
+
+function plusDays(n) {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+}
+
 async function runSimulation() {
   const res = await fetch("/api/simulate", {
     method: "POST",
@@ -80,6 +118,10 @@ function openDrawer(customerId) {
   const tl = document.getElementById("timeline");
   tl.innerHTML = `<li>Status: ${c.status}</li><li>Last call: ${c.last_call_id || "none"}</li>` +
     (c.recording_url ? `<li><audio controls src="${c.recording_url}"></audio></li>` : "");
+  if (c.recording_url) {
+    document.getElementById("audio-source").src = c.recording_url;
+    document.getElementById("audio-player").load();
+  }
   document.getElementById("detail-drawer").classList.add("open");
 }
 
@@ -93,6 +135,10 @@ function showTranscript(customerId, simData) {
 }
 
 document.getElementById("btn-modal-close").onclick = closeModal;
+document.getElementById("btn-tool-link").onclick = () => runTool("link");
+document.getElementById("btn-tool-reschedule").onclick = () => runTool("reschedule");
+document.getElementById("btn-tool-waive").onclick = () => runTool("waive");
+document.getElementById("btn-tool-escalate").onclick = () => runTool("escalate");
 document.getElementById("btn-run-simulation").onclick = runSimulation;
 document.getElementById("btn-live-call").onclick = liveCall;
 document.getElementById("btn-drawer-close").onclick = () =>
