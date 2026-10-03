@@ -1,0 +1,16 @@
+{
+  "notice": "LIVE Bolna call take 2 - real execution, test number controlled by developer",
+  "execution_id": "abb24841-ddf6-4652-8315-4a5f198dc472",
+  "agent_id": "9cca9967-dce2-49f0-a148-2e3facf3afae",
+  "status": "completed",
+  "customer_id": "CUST-01",
+  "to_number": "+917007623382",
+  "from_number": "+918035735856",
+  "conversation_duration_sec": 101.0,
+  "total_cost": 12.0,
+  "recording_url": "https://api.bolna.ai/recordings/call/abb24841-ddf6-4652-8315-4a5f198dc472",
+  "hangup_by": "Callee",
+  "transcript": "assistant: Hi Priya Sharma! This is NexusCloud calling about your recent autopay of Rs. 12499.0, which could not be debited. Do you have a quick minute?\nuser:  yeah it's written let me know what's happened\nassistant:  The auto-debit failed because your card on file has expired. Would you like me to send you a payment link to update and pay now?\nuser:  why did that happen\nassistant: Your card's expiration date has passed, so the payment couldn't be processed. Should I s\nuser:  yeah please do\nassistant: Sending you a secure payment link now.\nassistant: I\u2019m sorry, I\u2019m having trouble sending the payment link right now. Would you like me to try rescheduling the debit for a later date instead?\nuser:  please do for uh\nuser:  wait let me check my calendar\nassistant:  Sure, take your time. Let me know when you'd like to reschedule the debit, within the next 14 days.\nuser:  yeah you can do next week please\nassistant: Let me reschedule that debit for you.\nassistant:  I\u2019m sorry, I\u2019m unable to reschedule the debit at the moment. Would you prefer I call back later to assist you?\nuser:  okay\nassistant: Thank you, Priya. I will call back later to assist you with this. Have a good day!\n",
+  "tool_call_logs": [],
+  "created_at": "2026-10-03T22:13:06.767295+00:00"
+}
