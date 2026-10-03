@@ -3,6 +3,7 @@ from typing import Dict, List, Optional
 import threading
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -81,6 +82,14 @@ def _payment_link(customer: CustomerRecord) -> str:
 @app.get("/api/customers")
 def get_customers():
     return [c.model_dump() for c in db.list_customers()]
+
+
+@app.get("/")
+def serve_index():
+    index_path = STATIC_DIR / "index.html"
+    if not index_path.exists():
+        raise HTTPException(status_code=404, detail="Console UI not built")
+    return FileResponse(str(index_path), media_type="text/html")
 
 
 @app.post("/api/tools/send-link")
