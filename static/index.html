@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Nexus Cloud — Autopay Recovery Console</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, -apple-system, sans-serif; margin: 0; background: #f4f6fb; color: #1a2333; }
+  header { background: #101c33; color: #fff; padding: 16px 24px; }
+  header h1 { margin: 0; font-size: 20px; }
+  header p { margin: 4px 0 0; color: #9fb0cc; font-size: 13px; }
+  main { padding: 24px; max-width: 1200px; margin: 0 auto; }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .card { background: #fff; border-radius: 10px; padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+  .card h3 { margin: 0 0 8px; font-size: 13px; color: #5b6b87; text-transform: uppercase; }
+  .card .value { font-size: 26px; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 10px; overflow: hidden; }
+  th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #eef1f6; font-size: 14px; }
+  th { background: #eaf0fa; font-size: 12px; text-transform: uppercase; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; background: #eef2ff; }
+  .badge.pending { background: #fef3c7; } .badge.resolved { background: #d1fae5; }
+  button { cursor: pointer; border: 0; border-radius: 8px; padding: 8px 14px; font-size: 14px; }
+  .btn-primary { background: #2563eb; color: #fff; } .btn-ghost { background: #e5e9f2; }
+  .modal, .drawer { display: none; position: fixed; }
+  .modal.open, .drawer.open { display: block; }
+  .modal { inset: 0; background: rgba(0,0,0,.45); }
+  .modal-box { background: #fff; max-width: 480px; margin: 12vh auto; padding: 20px; border-radius: 12px; }
+  .drawer { top: 0; right: 0; width: min(420px, 92vw); height: 100%; background: #fff; box-shadow: -4px 0 16px rgba(0,0,0,.15); padding: 20px; overflow-y: auto; }
+  .timeline { list-style: none; padding: 0; } .timeline li { padding: 6px 0; border-bottom: 1px dashed #e5e9f2; font-size: 13px; }
+  #transcript { white-space: pre-wrap; background: #f8fafc; padding: 12px; border-radius: 8px; font-size: 13px; }
+  @media (max-width: 640px) { main { padding: 12px; } table { font-size: 12px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Nexus Cloud — Autopay Recovery Console</h1>
+  <p>Merchant Recovery Console for failed autopay dunning</p>
+</header>
+<main>
+  <section class="metrics" aria-label="Recovery metrics">
+    <div class="card"><h3>Outstanding Dunning ARR</h3><div class="value" id="metric-arr">—</div></div>
+    <div class="card"><h3>Accounts in Recovery</h3><div class="value" id="metric-accounts">—</div></div>
+    <div class="card"><h3>Recovery Rate</h3><div class="value" id="metric-rate">—</div></div>
+  </section>
+
+  <section class="card">
+    <h2>Customers</h2>
+    <table id="customer-table">
+      <thead><tr><th>ID</th><th>Name</th><th>Failure</th><th>Amount</th><th>Status</th><th>Action</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </section>
+</main>
+
+<div class="modal" id="trigger-modal" role="dialog" aria-modal="true">
+  <div class="modal-box">
+    <h2 id="modal-title">Trigger recovery</h2>
+    <p id="modal-customer"></p>
+    <input id="modal-phone" placeholder="Test phone (optional, for Live Call)" style="width:100%;padding:8px;margin-bottom:12px;" />
+    <div style="display:flex;gap:8px;">
+      <button class="btn-primary" id="btn-run-simulation">Run Simulation</button>
+      <button class="btn-ghost" id="btn-live-call">Live Call</button>
+      <button class="btn-ghost" id="btn-modal-close">Close</button>
+    </div>
+    <pre id="modal-result" style="white-space:pre-wrap;"></pre>
+  </div>
+</div>
+
+<aside class="drawer" id="detail-drawer" aria-label="Call detail">
+  <button class="btn-ghost" id="btn-drawer-close">Close</button>
+  <h2>Conversation</h2>
+  <div id="transcript">No transcript yet.</div>
+  <h3>Tool timeline</h3>
+  <ul class="timeline" id="timeline"></ul>
+  <h3>Recording</h3>
+  <audio id="audio-player" controls style="width:100%;"><source id="audio-source" src="" /></audio>
+</aside>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

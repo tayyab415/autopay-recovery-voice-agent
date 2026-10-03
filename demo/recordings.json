@@ -1,0 +1,96 @@
+{
+  "notice": "OFFLINE-SIMULATED evidence only. No live Bolna calls were placed; there are no live execution IDs or recording URLs.",
+  "simulated_offline": true,
+  "calls": [
+    {
+      "customer_id": "CUST-01",
+      "user_utterance": "Yes, my card got renewed, please send me a payment link.",
+      "tool_called": "send_payment_link",
+      "agent_reply": "Thanks Priya Sharma! I've sent a secure payment link via SMS: https://pay.nexuscloud.io/p/cust-01-4521. It covers Rs.12499.",
+      "final_status": "LINK_SENT",
+      "execution_id": null,
+      "recording_url": null
+    },
+    {
+      "customer_id": "CUST-02",
+      "user_utterance": "I get salary on the 5th, can you debit then?",
+      "tool_called": "reschedule_debit",
+      "agent_reply": "Got it Rahul Verma — I've rescheduled your debit of Rs.4999 to your salary date (the 5th).",
+      "final_status": "RESCHEDULED",
+      "execution_id": null,
+      "recording_url": null
+    },
+    {
+      "customer_id": "CUST-03",
+      "user_utterance": "My bank app timed out — please send me a payment link.",
+      "tool_called": "send_payment_link",
+      "agent_reply": "Thanks Ananya Iyer! I've sent a secure payment link via SMS: https://pay.nexuscloud.io/p/cust-03-2190. It covers Rs.2199.",
+      "final_status": "LINK_SENT",
+      "execution_id": null,
+      "recording_url": null
+    },
+    {
+      "customer_id": "CUST-04",
+      "user_utterance": "The amount exceeds my mandate limit — send me a payment link to pay the rest.",
+      "tool_called": "send_payment_link",
+      "agent_reply": "Thanks Vikram Patel! I've sent a secure payment link via SMS: https://pay.nexuscloud.io/p/cust-04-9042. It covers Rs.24999.",
+      "final_status": "LINK_SENT",
+      "execution_id": null,
+      "recording_url": null
+    },
+    {
+      "customer_id": "CUST-05",
+      "user_utterance": "How do I know this is legit? Send me an official payment link.",
+      "tool_called": "send_payment_link",
+      "agent_reply": "Thanks Sneha Kulkarni! I've sent a secure payment link via SMS: https://pay.nexuscloud.io/p/cust-05-3318. It covers Rs.999.",
+      "final_status": "LINK_SENT",
+      "execution_id": null,
+      "recording_url": null
+    },
+    {
+      "customer_id": "CUST-06",
+      "user_utterance": "I did not use these 5 licenses. This bill is completely wrong.",
+      "tool_called": "escalate_dispute",
+      "agent_reply": "I'm sorry about the billing error, Arjun Mehta. I've escalated this dispute to our billing team; they'll review it within 24 hours.",
+      "final_status": "DISPUTE_ESCALATED",
+      "execution_id": null,
+      "recording_url": null
+    },
+    {
+      "customer_id": "CUST-07",
+      "user_utterance": "I already cancelled — log it and escalate this dispute.",
+      "tool_called": "escalate_dispute",
+      "agent_reply": "I'm sorry about the billing error, Rohit Roy. I've escalated this dispute to our billing team; they'll review it within 24 hours.",
+      "final_status": "DISPUTE_ESCALATED",
+      "execution_id": null,
+      "recording_url": null
+    },
+    {
+      "customer_id": "CUST-08",
+      "user_utterance": "The late fee was your bank delay — please waive it, or send a fresh payment link.",
+      "tool_called": "send_payment_link",
+      "agent_reply": "Thanks Pooja Nair! I've sent a secure payment link via SMS: https://pay.nexuscloud.io/p/cust-08-8856. It covers Rs.6200.",
+      "final_status": "LINK_SENT",
+      "execution_id": null,
+      "recording_url": null
+    },
+    {
+      "customer_id": "CUST-09",
+      "user_utterance": "Stop calling me! Never call this number again!",
+      "tool_called": "mark_do_not_call",
+      "agent_reply": "Understood Harish Reddy — we won't call this number again. Sorry for the trouble.",
+      "final_status": "DO_NOT_CALL",
+      "execution_id": null,
+      "recording_url": null
+    },
+    {
+      "customer_id": "CUST-10",
+      "user_utterance": "I missed your call — please send me a payment link.",
+      "tool_called": "send_payment_link",
+      "agent_reply": "Thanks Neha Joshi! I've sent a secure payment link via SMS: https://pay.nexuscloud.io/p/cust-10-5569. It covers Rs.9999.",
+      "final_status": "LINK_SENT",
+      "execution_id": null,
+      "recording_url": null
+    }
+  ]
+}
