@@ -44,7 +44,7 @@ Two layers, per the design spec:
 
 ## Live Demo (hosted)
 
-Console + tools + mock checkout, running on AWS: http://ec2-3-229-250-217.compute-1.amazonaws.com
+Console + tools + mock checkout, running on AWS: http://nexuscloud-recovery.us-east-1.elasticbeanstalk.com
 
 Open it, hit Trigger on any row, Send payment link, open the checkout URL, tap Pay.
 No keys or phone needed. The instance is a demo box and may be stopped after review.
