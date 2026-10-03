@@ -3,11 +3,11 @@ from typing import Dict, List, Optional
 import threading
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from src.config import STATIC_DIR
+from src.config import PUBLIC_BASE_URL, STATIC_DIR
 from src.models import CustomerRecord, CustomerStatus, load_customers
 from src.policy_engine import PolicyEngine
 
@@ -79,6 +79,24 @@ def _payment_link(customer: CustomerRecord) -> str:
     return f"https://{PAY_LINK_DOMAIN}/p/{customer.customer_id.lower()}-{customer.payment_method_last4}"
 
 
+def _checkout_ref(customer: CustomerRecord) -> str:
+    return f"{customer.customer_id.lower()}-{customer.payment_method_last4}"
+
+
+def _checkout_url(customer: CustomerRecord) -> str:
+    ref = _checkout_ref(customer)
+    if PUBLIC_BASE_URL:
+        return f"{PUBLIC_BASE_URL}/pay/{ref}"
+    return f"/pay/{ref}"
+
+
+def _find_by_ref(ref: str) -> Optional[CustomerRecord]:
+    for c in db.list_customers():
+        if _checkout_ref(c) == ref.lower():
+            return c
+    return None
+
+
 @app.get("/api/customers")
 def get_customers():
     return [c.model_dump() for c in db.list_customers()]
@@ -98,7 +116,7 @@ def send_link(payload: SendLinkRequest):
     short_url = _payment_link(cust)
     cust.status = CustomerStatus.LINK_SENT
     db.update(cust)
-    return {"status": "success", "short_url": short_url, "customer_id": cust.customer_id}
+    return {"status": "success", "short_url": short_url, "checkout_url": _checkout_url(cust), "customer_id": cust.customer_id}
 
 
 @app.post("/api/tools/reschedule")
@@ -134,6 +152,34 @@ def escalate_dispute(payload: EscalateDisputeRequest):
     return {"status": "success", "customer_id": cust.customer_id}
 
 
+@app.get("/pay/{ref}", response_class=HTMLResponse)
+def checkout_page(ref: str):
+    """Mock merchant checkout. Fictional demo only: no real money moves."""
+    cust = _find_by_ref(ref)
+    if cust is None:
+        raise HTTPException(status_code=404, detail="Unknown payment reference")
+    total = cust.amount_due + cust.late_fee
+    return f"""<!doctype html><html><head><title>NexusCloud checkout</title></head><body>
+<h1>NexusCloud secure checkout (demo)</h1>
+<p>Customer: {cust.name} ({cust.customer_id})</p>
+<p>Plan: {cust.plan_name}</p>
+<p>Amount due: Rs.{cust.amount_due:.0f} + late fee Rs.{cust.late_fee:.0f} = Rs.{total:.0f}</p>
+<p>Failure: {cust.failure_code.value}</p>
+<form method="post" action="/api/pay/{ref.lower()}/complete"><button type="submit">Pay Rs.{total:.0f}</button></form>
+<p><small>Demo checkout. No real payment is processed.</small></p>
+</body></html>"""
+
+
+@app.post("/api/pay/{ref}/complete")
+def complete_payment(ref: str):
+    cust = _find_by_ref(ref)
+    if cust is None:
+        raise HTTPException(status_code=404, detail="Unknown payment reference")
+    cust.status = CustomerStatus.RESOLVED
+    db.update(cust)
+    return {"status": "success", "customer_id": cust.customer_id, "final_status": "RESOLVED"}
+
+
 @app.post("/api/webhook/bolna")
 def bolna_webhook(payload: dict):
     status = str(payload.get("status", "")).lower()
@@ -155,6 +201,9 @@ def bolna_webhook(payload: dict):
             transcript = payload.get("transcript")
             if transcript:
                 cust.disposition_notes = str(transcript)[:2000]
+            telephony = payload.get("telephony_data") or {}
+            if telephony.get("recording_url"):
+                cust.recording_url = telephony["recording_url"]
             db.update(cust)
     return {"status": "ok"}
 

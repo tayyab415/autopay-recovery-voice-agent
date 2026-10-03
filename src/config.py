@@ -9,3 +9,4 @@ DEMO_DIR = BASE_DIR / "demo"
 BOLNA_API_KEY = os.environ.get("BOLNA_API_KEY", "")
 BOLNA_BASE_URL = "https://api.bolna.ai"
 GATEWAY_PORT = int(os.environ.get("PORT", "8000"))
+PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")

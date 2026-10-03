@@ -73,10 +73,13 @@ async function liveCall() {
 
 function openDrawer(customerId) {
   const c = customers.find((x) => x.customer_id === customerId);
+  const rec = c.recording_url ? `\nRecording: ${c.recording_url}` : "";
   document.getElementById("transcript").textContent =
-    `Customer: ${c.name} (${c.customer_id})\nFailure: ${c.failure_code} — ${c.failure_reason}\nStatus: ${c.status}`;
+    `Customer: ${c.name} (${c.customer_id})\nFailure: ${c.failure_code} — ${c.failure_reason}\nStatus: ${c.status}\nLast call: ${c.last_call_id || "none"}${rec}` +
+    (c.disposition_notes ? `\n\n--- last call transcript ---\n${c.disposition_notes}` : "");
   const tl = document.getElementById("timeline");
-  tl.innerHTML = `<li>Status: ${c.status}</li><li>Last call: ${c.last_call_id || "none"}</li>`;
+  tl.innerHTML = `<li>Status: ${c.status}</li><li>Last call: ${c.last_call_id || "none"}</li>` +
+    (c.recording_url ? `<li><audio controls src="${c.recording_url}"></audio></li>` : "");
   document.getElementById("detail-drawer").classList.add("open");
 }
 

@@ -45,6 +45,7 @@ class CustomerRecord(BaseModel):
     waivers_used: int = 0
     disposition_notes: Optional[str] = None
     last_call_id: Optional[str] = None
+    recording_url: Optional[str] = None
     created_at: str = "2026-10-01T09:00:00Z"
 
 def load_customers(path: Optional[Path] = None) -> List[CustomerRecord]:
