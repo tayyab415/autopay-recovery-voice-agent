@@ -3,6 +3,7 @@ from typing import Dict, List, Optional
 import threading
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -38,6 +39,14 @@ class CustomerStore:
 db = CustomerStore()
 engine = PolicyEngine()
 app = FastAPI(title="Autopay Recovery Voice Agent Gateway")
+# Demo CORS: the static console may be hosted on S3 while the API runs on
+# Beanstalk/EC2. Production should restrict origins to the merchant domain.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
+)
 
 if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")

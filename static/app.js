@@ -1,9 +1,12 @@
 /* Merchant Recovery Console — consumes GET /api/customers, POST /api/simulate, POST /api/tools/* */
 let customers = [];
 let selectedCustomer = null;
+// Empty = same-origin (local serve). The S3-hosted page sets an absolute backend.
+const API_BASE = (document.querySelector('meta[name="api-base"]') || {}).content || "";
+const api = (path) => API_BASE + path;
 
 async function loadCustomers() {
-  const res = await fetch("/api/customers");
+  const res = await fetch(api("/api/customers"));
   customers = await res.json();
   renderMetrics(customers);
   renderTable(customers);
@@ -60,7 +63,7 @@ async function runTool(tool) {
     escalate: ["/api/tools/escalate-dispute", { customer_id: id, reason: "Raised from console" }],
   };
   const [url, body] = routes[tool];
-  const res = await fetch(url, {
+  const res = await fetch(api(url), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -90,7 +93,7 @@ function escapeHtml(s) {
 }
 
 async function runSimulation() {
-  const res = await fetch("/api/simulate", {
+  const res = await fetch(api("/api/simulate"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ customer_id: selectedCustomer.customer_id, user_speech: "Can you send me a link to pay?" }),
