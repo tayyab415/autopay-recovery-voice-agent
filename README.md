@@ -44,7 +44,7 @@ Two layers, per the design spec:
 
 ## Live Demo (hosted)
 
-Console + tools + mock checkout, running on AWS: http://3.229.250.217:8000
+Console + tools + mock checkout, running on AWS: http://3-229-250-217.nip.io
 
 Open it, hit Trigger on any row, Send payment link, open the checkout URL, tap Pay.
 No keys or phone needed. The instance is a demo box and may be stopped after review.
