@@ -12,6 +12,7 @@ def test_send_link_includes_checkout_url():
     data = res.json()
     assert "pay.nexuscloud.io" in data["short_url"]
     assert data["checkout_url"].endswith("/pay/cust-03-2190")
+    assert isinstance(data["push_sent"], bool)
 
 
 def test_checkout_page_renders_amount():

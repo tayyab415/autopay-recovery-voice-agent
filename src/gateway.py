@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from src.config import PUBLIC_BASE_URL, STATIC_DIR
+from src.config import NTFY_BASE_URL, NTFY_TOPIC, PUBLIC_BASE_URL, STATIC_DIR
 from src.models import CustomerRecord, CustomerStatus, load_customers
 from src.policy_engine import PolicyEngine
 
@@ -97,6 +97,27 @@ def _find_by_ref(ref: str) -> Optional[CustomerRecord]:
     return None
 
 
+def publish_push(title: str, message: str, topic: Optional[str] = None) -> bool:
+    """Best-effort push via ntfy (free, no account). Returns True on 200.
+
+    Used as the demo stand-in for SMS delivery: the handset gets a real
+    out-of-band message with the checkout link. Production swaps this
+    for an SMS provider + DLT registration; the call site stays the same.
+    """
+    import requests
+
+    try:
+        resp = requests.post(
+            f"{NTFY_BASE_URL}/{topic or NTFY_TOPIC}",
+            data=message.encode("utf-8"),
+            headers={"Title": title[:60], "Tags": "moneybag"},
+            timeout=10,
+        )
+        return resp.status_code == 200
+    except Exception:
+        return False
+
+
 @app.get("/api/customers")
 def get_customers():
     return [c.model_dump() for c in db.list_customers()]
@@ -114,9 +135,15 @@ def serve_index():
 def send_link(payload: SendLinkRequest):
     cust = _require_customer(payload.customer_id)
     short_url = _payment_link(cust)
+    checkout = _checkout_url(cust)
     cust.status = CustomerStatus.LINK_SENT
     db.update(cust)
-    return {"status": "success", "short_url": short_url, "checkout_url": _checkout_url(cust), "customer_id": cust.customer_id}
+    total = cust.amount_due + cust.late_fee
+    push_sent = publish_push(
+        f"NexusCloud autopay Rs.{total:.0f}",
+        f"Hi {cust.name}, your autopay of Rs.{total:.0f} failed ({cust.failure_code.value}). Pay securely: {checkout}",
+    )
+    return {"status": "success", "short_url": short_url, "checkout_url": checkout, "push_sent": push_sent, "customer_id": cust.customer_id}
 
 
 @app.post("/api/tools/reschedule")
