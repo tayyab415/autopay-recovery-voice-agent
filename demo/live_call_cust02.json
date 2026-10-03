@@ -1,0 +1,14 @@
+{
+  "notice": "LIVE Bolna call CUST-02 reschedule path - test number controlled by developer",
+  "execution_id": "50c6733b-9bc2-4149-9bb1-aac08fc63f13",
+  "agent_id": "9cca9967-dce2-49f0-a148-2e3facf3afae",
+  "status": "completed",
+  "customer_id": "CUST-02",
+  "to_number": "+917007623382",
+  "from_number": "+918035735856",
+  "conversation_duration_sec": 60.0,
+  "total_cost": 6.0,
+  "recording_url": "https://api.bolna.ai/recordings/call/50c6733b-9bc2-4149-9bb1-aac08fc63f13",
+  "transcript": "assistant: Hi Rahul Verma! This is NexusCloud calling about your recent autopay of Rs. 4999.0, which could not be debited. Do you have a quick minute?\nuser:  yeah what's happened\nassistant:  The auto-debit for Rs. 4999.0 failed due to insufficient funds. Would you like me to send you a payment link to clear this now?\nuser:  yeah\nassistant: Sending you a secure payment link now.\nassistant:  Apologies, Rahul, I am unable to send the payment link right now. Would you prefer to reschedule the debit for a later date within the next 14 days?\nuser:  yeah please\nassistant: I will help reschedule the debit for you within 14 days.\nassistant: Sorry, Rahul, I am unable to reschedule the debit at this moment. Please\nuser:  alright fine\n",
+  "created_at": "2026-10-03T22:33:31.597504+00:00"
+}
