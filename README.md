@@ -25,6 +25,18 @@ The customer phone has two tabs. Call is the handset: it rings, you answer, talk
 
 Click a row. Nexus Cloud rings that phone. Press Answer, allow the microphone, say hello. The agent stays quiet until it hears a greeting, then introduces itself once and pulls the account. Talk the way that customer would. When the agent sends a payment link, switch to the Messages tab on the same phone. The text holds a checkout link, and paying it marks the account recovered.
 
+### The built-in phone
+
+No SIM, no real number, no telecom. The phone on the right is a full simulation of the customer's handset, and the whole voice loop runs through it.
+
+**It receives calls.** Trigger a row and the phone rings with the merchant name on screen. Answer or Decline. Answering with the microphone opens a live Bolna voice session, the same agent and tools as a real call. A timer runs while you talk, and hanging up ends the session.
+
+**It receives SMS.** Every payment link the agent sends is stored as a text message on that customer's phone, readable from the Messages tab. A badge counts unread texts, and a "new text" hint appears mid-call so you know to look.
+
+**Its links work.** Each text carries an Open-checkout hyperlink. Tapping it opens the mock checkout with the right customer, amount, and failure. Tapping Pay marks the account recovered, and the table status flips. Ask for the link twice and you get the same URL back, not a second text, exactly like a real sender's duplicate handling.
+
+Run Simulation skips the phone entirely and runs the same tools headless. The drawer on each row keeps the transcript, the tool timeline, and the recording for whatever path you took.
+
 Run Simulation on a row runs the same tools with no microphone and no Bolna call. Call my phone dials an allowlisted handset only.
 
 The ledger is in memory. A restart, including Cloud Run scaling to zero, puts all ten accounts back to their starting state.
