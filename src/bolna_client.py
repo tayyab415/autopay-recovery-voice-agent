@@ -68,6 +68,18 @@ def _customer_id_prop() -> Dict[str, Any]:
     return {"type": "string", "description": "Customer ID from get_account, e.g. CUST-01"}
 
 
+def _hindi_prompt() -> str:
+    # Byte-identical to the live agent's Hindi branch. Devanagari (not Roman)
+    # so the Sarvam voice pronounces it as Hindi; tool/customer IDs stay English.
+    return (
+        "आप Nexus Cloud बिलिंग सहायता हैं। {{customer_name}} (खाता {{customer_id}}) को "
+        "Rs. {{amount_due}} के असफल ऑटोपे (कारण {{failure_code}}) के बारे में कॉल कर रहे हैं। "
+        "पहले hello या namaste का इंतज़ार करें, फिर एक बार परिचय दें और get_account को कॉल करें। "
+        "टूल की मनाही को उसी के शब्दों में बोलें। टूल की पुष्टि के बिना तारीख, छूट या रिफंड का वादा न करें। "
+        "हर जवाब दो वाक्यों से छोटा रखें।"
+    )
+
+
 def build_agent_payload(webhook_url: str, gateway_base_url: str = "") -> Dict[str, Any]:
     """Return a complete, working Bolna v2 agent spec.
 
@@ -215,6 +227,34 @@ def build_agent_payload(webhook_url: str, gateway_base_url: str = "") -> Dict[st
                     "input": {"provider": "plivo", "format": "wav"},
                     "output": {"provider": "plivo", "format": "wav"},
                     "api_tools": tools,
+                    "multilingual_config": {
+                        "enabled": True,
+                        "active_language": "en",
+                        "switch_tool_description": "Switch the conversation language when the caller speaks a different language.",
+                        "languages": {
+                            "en": {
+                                "synthesizer": {
+                                    "provider": "elevenlabs",
+                                    "provider_config": {"voice": "Angelica", "voice_id": "IkSv4tkouLJ6kYsQA7XD", "model": "eleven_turbo_v2_5"},
+                                    "stream": True,
+                                    "buffer_size": 250,
+                                    "audio_format": "wav",
+                                },
+                                "system_prompt": None,  # filled below from the English prompt
+                                "agent_name": "Nexus Cloud",
+                            },
+                            "hi": {
+                                "transcriber": {"language": "hi"},
+                                "synthesizer": {
+                                    "provider": "sarvam",
+                                    "provider_config": {"voice_id": "anushka", "model": "bulbul:v3"},
+                                },
+                                "system_prompt": _hindi_prompt(),
+                                "handoff_message": "ठीक है, मैं हिंदी में जारी रखता हूँ।",
+                                "agent_name": "Nexus Cloud",
+                            },
+                        },
+                    },
                 },
                 "task_config": {"call_terminate": 120, "hangup_after_silence": 10, "voicemail": True},
             }
@@ -222,9 +262,11 @@ def build_agent_payload(webhook_url: str, gateway_base_url: str = "") -> Dict[st
     }
     if webhook_url:
         agent_config["webhook_url"] = webhook_url
+    system_prompt = _system_prompt()
+    agent_config["tasks"][0]["tools_config"]["multilingual_config"]["languages"]["en"]["system_prompt"] = system_prompt
     return {
         "agent_config": agent_config,
-        "agent_prompts": {"task_1": {"system_prompt": _system_prompt()}},
+        "agent_prompts": {"task_1": {"system_prompt": system_prompt}},
     }
 
 

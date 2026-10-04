@@ -96,4 +96,6 @@ Tool routes have no merchant auth. They are open so the demo and the voice agent
 
 Browser calling needs Bolna's web-call beta enabled on the account. If it is off, Answer fails with that reason on the phone screen. Outbound to an allowlisted number still works.
 
+The live agent answers in English and Hindi. Hindi runs on a Sarvam voice with a Hindi prompt; the tools and policy stay the same in both languages.
+
 If I kept one thing from this repo, it would not be the console. It would be the playbook, the tool refusals, and the ledger. That part outlives any voice provider.
