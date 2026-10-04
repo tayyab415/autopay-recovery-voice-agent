@@ -44,7 +44,7 @@ def cmd_simulate(customer_id: str) -> int:
 
 def cmd_call(customer_id: str, phone: str) -> int:
     from src.bolna_client import BolnaRecoveryClient
-    from src.config import BOLNA_API_KEY
+    from src.config import BOLNA_API_KEY, PUBLIC_BASE_URL
 
     if not BOLNA_API_KEY:
         print("BOLNA_API_KEY is not set; refusing to place a live call.", file=sys.stderr)
@@ -54,7 +54,8 @@ def cmd_call(customer_id: str, phone: str) -> int:
         print(f"Unknown customer: {customer_id}", file=sys.stderr)
         return 1
     client = BolnaRecoveryClient()
-    agents = client.create_or_get_agent(webhook_url="")
+    webhook = f"{PUBLIC_BASE_URL}/api/webhook/bolna" if PUBLIC_BASE_URL else ""
+    agents = client.create_or_get_agent(webhook_url=webhook, gateway_base_url=PUBLIC_BASE_URL)
     agent_id = agents.get("agent_id", "") if isinstance(agents, dict) else ""
     result = client.trigger_outbound_call(agent_id, cust, phone=phone or cust.phone)
     print(result)

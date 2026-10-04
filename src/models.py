@@ -26,6 +26,7 @@ class CustomerStatus(str, Enum):
     FEE_WAIVED = "FEE_WAIVED"
     DO_NOT_CALL = "DO_NOT_CALL"
     RETRY_SCHEDULED = "RETRY_SCHEDULED"
+    VERIFICATION_SENT = "VERIFICATION_SENT"
     RESOLVED = "RESOLVED"
 
 class CustomerRecord(BaseModel):
@@ -46,6 +47,14 @@ class CustomerRecord(BaseModel):
     disposition_notes: Optional[str] = None
     last_call_id: Optional[str] = None
     recording_url: Optional[str] = None
+    scheduled_debit_date: Optional[str] = None
+    support_ticket_id: Optional[str] = None
+    dunning_paused_until: Optional[str] = None
+    last_disposition: Optional[str] = None
+    recovery_probability: Optional[float] = None
+    next_touch_at: Optional[str] = None
+    link_expires_at: Optional[str] = None
+    last_link_channel: Optional[str] = None
     created_at: str = "2026-10-01T09:00:00Z"
 
 def load_customers(path: Optional[Path] = None) -> List[CustomerRecord]:

@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from pydantic import BaseModel
 from src.models import CustomerRecord
@@ -20,7 +20,7 @@ class PolicyEngine:
         except ValueError:
             return PolicyResult(allowed=False, error="Invalid date format. Expected YYYY-MM-DD.")
 
-        ref_date = datetime.strptime(current_date, "%Y-%m-%d").date() if current_date else datetime.utcnow().date()
+        ref_date = datetime.strptime(current_date, "%Y-%m-%d").date() if current_date else datetime.now(timezone.utc).date()
         
         if target_date <= ref_date:
             return PolicyResult(allowed=False, error="Reschedule date must be in the future.")

@@ -25,35 +25,47 @@ class ToolSpec(BaseModel):
 
 
 DEFAULT_TOOLS = [
-    {"name": "send_payment_link", "description": "Send a secure checkout link via SMS/WhatsApp.", "endpoint": "/api/tools/send-link"},
+    {"name": "get_account", "description": "Read failure, amount, allowed actions, and directions.", "endpoint": "/api/tools/get-account"},
+    {"name": "send_payment_link", "description": "Send one checkout link via SMS or WhatsApp.", "endpoint": "/api/tools/send-link"},
     {"name": "reschedule_debit", "description": "Reschedule the auto-debit within 14 days.", "endpoint": "/api/tools/reschedule"},
-    {"name": "waive_late_fee", "description": "Waive an eligible late fee (once per year).", "endpoint": "/api/tools/waive-fee"},
-    {"name": "escalate_dispute", "description": "Escalate a billing dispute to a human agent.", "endpoint": "/api/tools/escalate-dispute"},
+    {"name": "waive_late_fee", "description": "Waive an eligible late fee once per year.", "endpoint": "/api/tools/waive-fee"},
+    {"name": "escalate_dispute", "description": "Pause dunning and open a dispute ticket.", "endpoint": "/api/tools/escalate-dispute"},
+    {"name": "log_cancellation", "description": "Pause dunning and log a claimed cancellation.", "endpoint": "/api/tools/log-cancellation"},
+    {"name": "retry_mandate", "description": "Re-poll a bank mandate after a gateway timeout.", "endpoint": "/api/tools/retry-mandate"},
+    {"name": "send_app_verification", "description": "Send an in-app verification when the caller is suspected of phishing.", "endpoint": "/api/tools/verify-caller"},
+    {"name": "schedule_retry", "description": "Schedule the next touch after voicemail or no answer.", "endpoint": "/api/tools/schedule-retry"},
     {"name": "mark_do_not_call", "description": "Honor a do-not-call request immediately.", "endpoint": "/api/tools/donotcall"},
 ]
 
 
-def _custom_function(name: str, description: str, pre_call: str, base: str, endpoint: str) -> Dict[str, Any]:
+def _custom_function(
+    name: str,
+    description: str,
+    pre_call: str,
+    base: str,
+    endpoint: str,
+    properties: Dict[str, Any],
+    required: list,
+    param: Dict[str, str],
+) -> Dict[str, Any]:
     """One OpenAI-shaped custom function wired to a gateway tool endpoint."""
     return {
         "name": name,
         "description": description,
         "pre_call_message": pre_call,
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "customer_id": {"type": "string", "description": "Customer ID, e.g. CUST-01"},
-            },
-            "required": ["customer_id"],
-        },
+        "parameters": {"type": "object", "properties": properties, "required": required},
         "key": "custom_task",
         "value": {
             "method": "POST",
-            "param": {"customer_id": "%(customer_id)s"},
+            "param": param,
             "url": f"{base}{endpoint}" if base else endpoint,
             "headers": {"Content-Type": "application/json"},
         },
     }
+
+
+def _customer_id_prop() -> Dict[str, Any]:
+    return {"type": "string", "description": "Customer ID from get_account, e.g. CUST-01"}
 
 
 def build_agent_payload(webhook_url: str, gateway_base_url: str = "") -> Dict[str, Any]:
@@ -64,30 +76,111 @@ def build_agent_payload(webhook_url: str, gateway_base_url: str = "") -> Dict[st
     calls fail; the conversation itself still works without it.
     """
     base = gateway_base_url.rstrip("/")
+    cid = _customer_id_prop()
     tools = [
         _custom_function(
+            "get_account",
+            "Call this first on every call. Returns the failure reason, amount, allowed_actions, and the merchant directions you must follow.",
+            "Let me pull up the account.",
+            base, "/api/tools/get-account",
+            {"customer_id": cid},
+            ["customer_id"],
+            {"customer_id": "%(customer_id)s"},
+        ),
+        _custom_function(
             "send_payment_link",
-            "Use when the customer agrees to pay now or asks for a payment link, UPI link, or checkout SMS/WhatsApp for their failed autopay.",
-            "Sending you a secure payment link now.",
+            "Send one checkout link. Required only when get_account lists send_payment_link. channel is sms or whatsapp. Set resend true only if the customer says the first link never arrived.",
+            "Sending one secure payment link now.",
             base, "/api/tools/send-link",
+            {
+                "customer_id": cid,
+                "channel": {"type": "string", "description": "sms or whatsapp", "enum": ["sms", "whatsapp"]},
+                "resend": {"type": "boolean", "description": "True only when the customer says the earlier link never arrived"},
+            },
+            ["customer_id", "channel"],
+            {"customer_id": "%(customer_id)s", "channel": "%(channel)s", "resend": "%(resend)s"},
         ),
         _custom_function(
             "reschedule_debit",
-            "Use when the customer asks to pay later, mentions salary day, or wants the auto-debit retried on a later date within 14 days.",
-            "Let me reschedule that debit for you.",
+            "Move the auto-debit. target_date is required, format YYYY-MM-DD, and must be within 14 days. Never invent a date the customer did not agree to.",
+            "Let me check whether that date is inside policy.",
             base, "/api/tools/reschedule",
+            {
+                "customer_id": cid,
+                "target_date": {"type": "string", "description": "Agreed debit date, YYYY-MM-DD, within 14 days"},
+            },
+            ["customer_id", "target_date"],
+            {"customer_id": "%(customer_id)s", "target_date": "%(target_date)s"},
         ),
         _custom_function(
             "waive_late_fee",
-            "Use when the customer objects to the late fee or asks for a waiver. Only one waiver per customer is allowed.",
-            "Checking whether that fee can be waived.",
+            "Waive the late fee only. One waiver per year. Never waive the principal. Use only if get_account lists waive_late_fee and waivers_remaining is 1.",
+            "Checking whether that late fee can be waived.",
             base, "/api/tools/waive-fee",
+            {
+                "customer_id": cid,
+                "reason": {"type": "string", "description": "Short reason, in the customer's words"},
+            },
+            ["customer_id", "reason"],
+            {"customer_id": "%(customer_id)s", "reason": "%(reason)s"},
         ),
         _custom_function(
             "escalate_dispute",
-            "Use when the customer says the bill is wrong, disputes seats/charges, or claims they cancelled.",
-            "Escalating this to our billing team right away.",
+            "Open a billing dispute and pause dunning. Use when the bill is wrong. Do not use this for a claimed cancellation. summary is required.",
+            "Opening a dispute so we stop collection while it is reviewed.",
             base, "/api/tools/escalate-dispute",
+            {
+                "customer_id": cid,
+                "dispute_type": {"type": "string", "description": "billing_error or seat_count_discrepancy"},
+                "summary": {"type": "string", "description": "What the customer says is wrong"},
+            },
+            ["customer_id", "summary"],
+            {"customer_id": "%(customer_id)s", "dispute_type": "%(dispute_type)s", "summary": "%(summary)s"},
+        ),
+        _custom_function(
+            "log_cancellation",
+            "Customer says they already cancelled. Pause dunning and open a cancellation ticket. Do not argue and do not collect.",
+            "I'll log that cancellation and pause any further charges.",
+            base, "/api/tools/log-cancellation",
+            {"customer_id": cid, "reason": {"type": "string", "description": "What the customer says they cancelled"}},
+            ["customer_id"],
+            {"customer_id": "%(customer_id)s", "reason": "%(reason)s"},
+        ),
+        _custom_function(
+            "retry_mandate",
+            "Queue an immediate bank re-poll. Only when get_account lists retry_mandate, which is a bank timeout, not a customer refusal.",
+            "I'll retry the debit with the bank. You don't need to do anything.",
+            base, "/api/tools/retry-mandate",
+            {"customer_id": cid},
+            ["customer_id"],
+            {"customer_id": "%(customer_id)s"},
+        ),
+        _custom_function(
+            "send_app_verification",
+            "Customer thinks the call is a scam. Send an in-app verification. Tell them the only official domain is pay.nexuscloud.io. Never ask for card numbers, OTPs, or passwords.",
+            "I'll send a verification inside the Nexus Cloud app.",
+            base, "/api/tools/verify-caller",
+            {"customer_id": cid},
+            ["customer_id"],
+            {"customer_id": "%(customer_id)s"},
+        ),
+        _custom_function(
+            "schedule_retry",
+            "Nobody answered, or the call reached voicemail. Schedule the next touch. Do not leave a payment demand.",
+            "Nobody is available. I'll schedule another attempt.",
+            base, "/api/tools/schedule-retry",
+            {"customer_id": cid, "reason": {"type": "string", "description": "voicemail or no-answer"}},
+            ["customer_id"],
+            {"customer_id": "%(customer_id)s", "reason": "%(reason)s"},
+        ),
+        _custom_function(
+            "mark_do_not_call",
+            "Call this as soon as the customer says stop calling, never call, or do not contact me. Then apologize and hang up.",
+            "I'll make sure we don't call this number again.",
+            base, "/api/tools/donotcall",
+            {"customer_id": cid, "reason": {"type": "string", "description": "What the customer said"}},
+            ["customer_id"],
+            {"customer_id": "%(customer_id)s", "reason": "%(reason)s"},
         ),
     ]
     agent_config: Dict[str, Any] = {
@@ -137,15 +230,21 @@ def build_agent_payload(webhook_url: str, gateway_base_url: str = "") -> Dict[st
 
 def _system_prompt() -> str:
     return (
-        "You are a polite autopay recovery agent for NexusCloud calling {{customer_name}} "
-        "about a failed auto-debit of Rs. {{amount_due}} (reason: {{failure_code}}). "
-        "Keep every reply under two sentences. "
-        "If they agree to pay, call send_payment_link. "
-        "If they ask to pay later or mention salary day, call reschedule_debit (max 14 days out; never offer more). "
-        "If they object to the late fee, call waive_late_fee (allowed at most once). "
-        "If they say the bill is wrong or they cancelled, call escalate_dispute. "
-        "If they ask to never be called again, apologize, end the call, no tools. "
-        "If voicemail or silence, leave the standard callback notice and hang up."
+        "You are Nexus Cloud billing support calling {{customer_name}} about a failed autopay "
+        "of Rs. {{amount_due}} (reason code {{failure_code}}). "
+        "You work for the merchant, not a collections agency. Never threaten to shut off service. "
+        "Keep each spoken turn under two sentences. "
+        "On the first turn, call get_account and obey its directions and allowed_actions. "
+        "Do not promise a date, a waiver, or a refund until a tool confirms it. "
+        "If a tool returns a rejection, say that message and offer only an allowed action. "
+        "reschedule_debit requires target_date as YYYY-MM-DD, never more than 14 days out, and only a date the customer agreed to. "
+        "waive_late_fee can succeed only once and never waives the principal. "
+        "escalate_dispute is for a wrong bill. log_cancellation is for a plan they say they already cancelled. Do not mix them up. "
+        "retry_mandate is only for a bank timeout. send_app_verification is for scam fears. The only official domain is pay.nexuscloud.io. "
+        "Never ask for a card number, OTP, or password. "
+        "schedule_retry is for voicemail or no answer. "
+        "mark_do_not_call as soon as they say stop calling, then apologize and hang up. "
+        "After a tool succeeds, confirm only what the tool message says."
     )
 
 

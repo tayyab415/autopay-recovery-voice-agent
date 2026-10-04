@@ -1,6 +1,9 @@
-/* Merchant Recovery Console — consumes GET /api/customers, POST /api/simulate, POST /api/tools/* */
+/* Merchant Recovery Console — ledger, playbook directions, tool audit. */
 let customers = [];
+let scenarios = {};
 let selectedCustomer = null;
+
+const CLOSED = new Set(["RESOLVED", "DO_NOT_CALL", "CANCELLATION_LOGGED", "DISPUTE_ESCALATED"]);
 // Empty = same-origin (local serve). The S3-hosted page sets an absolute backend.
 const API_BASE = (document.querySelector('meta[name="api-base"]') || {}).content || "";
 const api = (path) => API_BASE + path;
@@ -12,10 +15,17 @@ async function loadCustomers() {
   renderTable(customers);
 }
 
+async function loadScenarios() {
+  const res = await fetch(api("/api/scenarios"));
+  if (res.ok) scenarios = await res.json();
+}
+
 function renderMetrics(rows) {
-  const outstanding = rows.reduce((s, c) => s + (c.amount_due || 0), 0);
-  const inRecovery = rows.filter((c) => c.status === "PENDING").length;
-  const resolved = rows.filter((c) => !["PENDING"].includes(c.status)).length;
+  const outstanding = rows
+    .filter((c) => c.status !== "RESOLVED")
+    .reduce((s, c) => s + (c.amount_due || 0), 0);
+  const inRecovery = rows.filter((c) => !CLOSED.has(c.status)).length;
+  const resolved = rows.filter((c) => c.status === "RESOLVED").length;
   const rate = rows.length ? Math.round((resolved / rows.length) * 100) : 0;
   document.getElementById("metric-arr").textContent = "Rs." + outstanding.toLocaleString("en-IN");
   document.getElementById("metric-accounts").textContent = String(inRecovery);
@@ -47,7 +57,9 @@ function renderTable(rows) {
 function openModal(customerId) {
   selectedCustomer = customers.find((c) => c.customer_id === customerId);
   document.getElementById("modal-customer").textContent =
-    `${selectedCustomer.customer_id} — ${selectedCustomer.name} (${selectedCustomer.failure_code})`;
+    `${selectedCustomer.customer_id} - ${selectedCustomer.name} (${selectedCustomer.failure_code})`;
+  const script = scenarios[selectedCustomer.customer_id];
+  document.getElementById("modal-script").textContent = script ? `Persona line: ${script}` : "";
   document.getElementById("modal-result").textContent = "";
   document.getElementById("trigger-modal").classList.add("open");
 }
@@ -93,14 +105,15 @@ function escapeHtml(s) {
 }
 
 async function runSimulation() {
+  const speech = scenarios[selectedCustomer.customer_id] || "Can you send me a link to pay?";
   const res = await fetch(api("/api/simulate"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ customer_id: selectedCustomer.customer_id, user_speech: "Can you send me a link to pay?" }),
+    body: JSON.stringify({ customer_id: selectedCustomer.customer_id, user_speech: speech }),
   });
   const data = await res.json();
   document.getElementById("modal-result").textContent = JSON.stringify(data, null, 2);
-  showTranscript(selectedCustomer.customer_id, data);
+  showTranscript(selectedCustomer.customer_id);
 }
 
 async function liveCall() {
@@ -112,14 +125,41 @@ async function liveCall() {
   document.getElementById("modal-result").textContent = "Live Call requires server-side Bolna credentials; use runner.py call --customer " + selectedCustomer.customer_id + " --phone " + phone;
 }
 
-function openDrawer(customerId) {
+async function openDrawer(customerId) {
   const c = customers.find((x) => x.customer_id === customerId);
   const rec = c.recording_url ? `\nRecording: ${c.recording_url}` : "";
+  const disposition = c.last_disposition ? `\nDisposition: ${c.last_disposition} (${c.recovery_probability})` : "";
+  const nextTouch = c.next_touch_at ? `\nNext touch: ${c.next_touch_at}` : "";
+  const ticket = c.support_ticket_id ? `\nTicket: ${c.support_ticket_id} paused until ${c.dunning_paused_until || "n/a"}` : "";
+  const scheduled = c.scheduled_debit_date ? `\nDebit date: ${c.scheduled_debit_date}` : "";
   document.getElementById("transcript").textContent =
-    `Customer: ${c.name} (${c.customer_id})\nFailure: ${c.failure_code} — ${c.failure_reason}\nStatus: ${c.status}\nLast call: ${c.last_call_id || "none"}${rec}` +
+    `Customer: ${c.name} (${c.customer_id})\nFailure: ${c.failure_code} - ${c.failure_reason}\nStatus: ${c.status}${disposition}${nextTouch}${scheduled}${ticket}\nLast call: ${c.last_call_id || "none"}${rec}` +
     (c.disposition_notes ? `\n\n--- last call transcript ---\n${c.disposition_notes}` : "");
+  let directions = "";
+  try {
+    const acct = await fetch(api("/api/tools/get-account"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ customer_id: customerId }),
+    });
+    if (acct.ok) {
+      const data = await acct.json();
+      directions = `${data.directions} Allowed: ${(data.allowed_actions || []).join(", ")}.`;
+    }
+  } catch (err) {
+    directions = "";
+  }
+  document.getElementById("account-directions").textContent = directions;
+  let audit = [];
+  try {
+    const res = await fetch(api(`/api/customers/${customerId}/audit`));
+    if (res.ok) audit = await res.json();
+  } catch (err) {
+    audit = [];
+  }
   const tl = document.getElementById("timeline");
-  tl.innerHTML = `<li>Status: ${c.status}</li><li>Last call: ${c.last_call_id || "none"}</li>` +
+  const rows = audit.map((a) => `<li>${a.at} ${a.tool}: ${a.result_status}. ${escapeHtml(a.message || "")}</li>`);
+  tl.innerHTML = (rows.join("") || `<li>Status: ${c.status}</li><li>Last call: ${c.last_call_id || "none"}</li>`) +
     (c.recording_url ? `<li><audio controls src="${c.recording_url}"></audio></li>` : "");
   if (c.recording_url) {
     document.getElementById("audio-source").src = c.recording_url;
@@ -128,13 +168,9 @@ function openDrawer(customerId) {
   document.getElementById("detail-drawer").classList.add("open");
 }
 
-function showTranscript(customerId, simData) {
-  document.getElementById("transcript").textContent =
-    `Agent: ${simData.agent_reply}\nTool: ${simData.tool_called}\nStatus: ${simData.final_status}`;
-  const tl = document.getElementById("timeline");
-  tl.innerHTML = `<li>${new Date().toISOString()} — ${simData.tool_called}</li>`;
-  document.getElementById("detail-drawer").classList.add("open");
-  loadCustomers();
+async function showTranscript(customerId) {
+  await loadCustomers();
+  openDrawer(customerId);
 }
 
 document.getElementById("btn-modal-close").onclick = closeModal;
@@ -147,4 +183,4 @@ document.getElementById("btn-live-call").onclick = liveCall;
 document.getElementById("btn-drawer-close").onclick = () =>
   document.getElementById("detail-drawer").classList.remove("open");
 
-loadCustomers();
+loadScenarios().then(loadCustomers);
