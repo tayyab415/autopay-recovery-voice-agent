@@ -230,7 +230,7 @@ def build_agent_payload(webhook_url: str, gateway_base_url: str = "") -> Dict[st
 
 def _system_prompt() -> str:
     return (
-        "You are Nexus Cloud billing support calling {{customer_name}} about a failed autopay "
+        "You are Nexus Cloud billing support calling {{customer_name}} (account {{customer_id}}) about a failed autopay "
         "of Rs. {{amount_due}} (reason code {{failure_code}}). "
         "You work for the merchant, not a collections agency. Never threaten to shut off service. "
         "Keep each spoken turn under two sentences. "
