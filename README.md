@@ -41,9 +41,17 @@ Run Simulation on a row runs the same tools with no microphone and no Bolna call
 
 The ledger is in memory. A restart, including Cloud Run scaling to zero, puts all ten accounts back to their starting state.
 
+## My rationale: the agentic harness
+
+A model is not an agent. On its own it talks fluently, remembers nothing, promises anything, and leaves no record behind. The harness is everything around it that turns talk into accountable action, and the harness is the thing I actually built here.
+
+Mine has four parts. Hands: ten tools that move money, dates, and tickets, each carrying the full decision it needs. Memory: a ledger with every account, an audit row for every tool call, and a stamp after each outcome saying what happened, how likely recovery looks now, and when to try again. Ears after the call: the webhook brings transcripts and recordings back into the drawer, so a conversation is evidence, not vapor. And a playground: the simulator, the console, and the built-in phone, so every path can be prodded for free before it ever touches a real handset.
+
+Engaging, to me, is structural, not charm. The agent waits for hello instead of talking over the pickup. It keeps turns under two sentences so the customer can interrupt. When policy says no, it speaks the tool's own refusal plus what it can still do, which is why "I can't do that" lands as help instead of a wall. It answers in Hindi when spoken to in Hindi. The payment text buzzes mid-call so the loop closes while the voice is still warm. None of that is personality tuning. It is the loop staying alive until the account resolves.
+
 ## Why I split it in two
 
-A voice model is fluent and unaccountable. Give it a merchant's billing rules as prompt text and it will agree to a date past policy, waive a fee twice, or collect a bill the customer already disputed, all in a perfectly polite tone. I did not want politeness to be the thing standing between the merchant and its money. So the rules live somewhere the model cannot rewrite them mid-call.
+Inside that harness I keep two jobs strictly apart, because a voice model is fluent and unaccountable. Give it a merchant's billing rules as prompt text and it will agree to a date past policy, waive a fee twice, or collect a bill the customer already disputed, all in a perfectly polite tone. I did not want politeness to be the thing standing between the merchant and its money. So the rules live somewhere the model cannot rewrite them mid-call.
 
 The intelligence layer listens and talks. Here that is Bolna: Deepgram transcribes, GPT-6 Luna answers on my own OpenAI key, ElevenLabs speaks. I treat all of that as replaceable. If a better voice stack appears next quarter, it should slot in without touching a single billing rule.
 
