@@ -101,3 +101,12 @@ def test_web_session_uses_ledger_not_browser_amounts(monkeypatch):
     assert captured["user_data"]["customer_name"] == "Rahul Verma"
     assert captured["user_data"]["amount_due"] == 4999.0
     assert captured["user_data"]["failure_code"] == "INSUFFICIENT_FUNDS"
+
+
+def test_cli_call_refuses_without_public_base_url(monkeypatch, capsys):
+    from src.runner import cmd_call
+
+    monkeypatch.setattr(config, "BOLNA_API_KEY", "test-key")
+    monkeypatch.setattr(config, "PUBLIC_BASE_URL", "")
+    assert cmd_call("CUST-03", "+917007623382") == 2
+    assert "PUBLIC_BASE_URL" in capsys.readouterr().err

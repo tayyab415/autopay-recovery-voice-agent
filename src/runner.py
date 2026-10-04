@@ -49,6 +49,13 @@ def cmd_call(customer_id: str, phone: str) -> int:
     if not BOLNA_API_KEY:
         print("BOLNA_API_KEY is not set; refusing to place a live call.", file=sys.stderr)
         return 2
+    if not PUBLIC_BASE_URL:
+        print("PUBLIC_BASE_URL is not set; refusing to place a live call. "
+              "Without it the agent is built with relative tool URLs that "
+              "Bolna cannot reach, so every tool fails mid-call (seen 2026-10-04). "
+              "Export it first, e.g. PUBLIC_BASE_URL=https://<cloud-run-url>.",
+              file=sys.stderr)
+        return 2
     cust = db.get_customer(customer_id)
     if cust is None:
         print(f"Unknown customer: {customer_id}", file=sys.stderr)
