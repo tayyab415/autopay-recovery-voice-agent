@@ -39,7 +39,7 @@ Two layers, per the design spec:
 
 ## Live Demo (hosted)
 
-Docker app on AWS: http://nexuscloud-recovery.us-east-1.elasticbeanstalk.com
+Docker app on AWS: https://d2ncaw9vlxv1qz.cloudfront.net
 
 Open it, hit Trigger on any row, Send payment link, open the checkout URL, tap Pay.
 No keys or phone needed. The Trigger modal's Live Call button places a real
