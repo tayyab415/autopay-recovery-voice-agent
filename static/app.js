@@ -273,7 +273,7 @@ async function liveCall() {
   const phone = document.getElementById("modal-phone").value.trim();
   const box = document.getElementById("modal-result");
   if (!phone) {
-    box.textContent = "Enter your test number first (the allowlisted one).";
+    box.textContent = "Type your number above in +91 format first.";
     return;
   }
   box.textContent = "Placing call… pick up your phone.";

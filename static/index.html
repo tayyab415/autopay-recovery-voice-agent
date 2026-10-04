@@ -58,6 +58,11 @@
   <p>Merchant Recovery Console for failed autopay dunning</p>
 </header>
 <main>
+  <section class="card" aria-label="How to test" style="margin-bottom:16px;">
+    <h2 style="margin-top:0;">2 ways to test this app</h2>
+    <p style="margin:4px 0;"><strong>1. Free, no phone.</strong> Hit Trigger on any row: Run Simulation, fire the tool buttons, open the checkout link, tap Pay. Nothing leaves this page.</p>
+    <p style="margin:4px 0 0;"><strong>2. Real voice.</strong> Talk in browser with your microphone, or comfortable testing on your phone? Open a row, type your number in the Trigger box, hit Call my phone. One live call per number per day.</p>
+  </section>
   <section class="metrics" aria-label="Recovery metrics">
     <div class="card"><h3>Outstanding Dunning ARR</h3><div class="value" id="metric-arr">—</div></div>
     <div class="card"><h3>Accounts in Recovery</h3><div class="value" id="metric-accounts">—</div></div>
@@ -115,7 +120,8 @@
     <p id="modal-customer"></p>
     <p id="modal-script" style="color:#5b6b87;font-size:13px;"></p>
     <p style="font-size:13px;color:#334155;">Answer on the phone at the right. The payment text arrives in Messages.</p>
-    <input id="modal-phone" placeholder="Your phone, only for Call my phone" style="width:100%;padding:8px;margin-bottom:12px;" />
+    <label for="modal-phone" style="font-size:13px;display:block;margin-bottom:4px;">Comfortable testing on your real phone? Type it here (+91 format). One live call per number per day.</label>
+    <input id="modal-phone" placeholder="+917007623382" inputmode="tel" style="width:100%;padding:8px;margin-bottom:12px;" />
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
       <button class="btn-primary" id="btn-tool-link">Send payment link</button>
       <button class="btn-primary" id="btn-tool-reschedule">Reschedule +5d</button>

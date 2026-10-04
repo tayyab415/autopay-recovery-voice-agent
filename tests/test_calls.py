@@ -110,3 +110,38 @@ def test_cli_call_refuses_without_public_base_url(monkeypatch, capsys):
     monkeypatch.setattr(config, "PUBLIC_BASE_URL", "")
     assert cmd_call("CUST-03", "+917007623382") == 2
     assert "PUBLIC_BASE_URL" in capsys.readouterr().err
+
+
+def _allowlisted_call(monkeypatch, number="+917007623382"):
+    from src import bolna_client
+
+    monkeypatch.setattr(config, "CALL_ALLOWLIST", [number])
+    monkeypatch.setattr(config, "BOLNA_API_KEY", "test-key")
+    monkeypatch.setattr(config, "BOLNA_AGENT_ID", "agent-1")
+    monkeypatch.setattr(
+        bolna_client.BolnaRecoveryClient,
+        "trigger_outbound_call",
+        lambda self, agent_id, customer, phone=None: {"status": "queued", "execution_id": "exec-1"},
+    )
+    return client.post("/api/calls/outbound", json={"customer_id": "CUST-01", "phone": number})
+
+
+def test_outbound_second_call_same_number_429(monkeypatch):
+    from src import gateway
+
+    gateway._DEMO_CALLS.clear()
+    assert _allowlisted_call(monkeypatch).status_code == 200
+    res = _allowlisted_call(monkeypatch)
+    assert res.status_code == 429
+    gateway._DEMO_CALLS.clear()
+
+
+def test_outbound_daily_budget_429(monkeypatch):
+    from datetime import datetime, timezone
+    from src import gateway
+
+    today = datetime.now(timezone.utc).date().isoformat()
+    gateway._DEMO_CALLS[today] = {"total": gateway.DEMO_CALLS_TOTAL_PER_DAY, "numbers": {}}
+    res = _allowlisted_call(monkeypatch, number="+911234567890")
+    assert res.status_code == 429
+    gateway._DEMO_CALLS.clear()

@@ -18,6 +18,28 @@ from src.tools import ToolResult, ToolService, checkout_ref
 engine = PolicyEngine()
 app = FastAPI(title="Autopay Recovery Voice Agent Gateway")
 
+# Demo-call spend guard. The public demo lets any visitor type their own
+# number, so each paid call is capped: one per number per day, ten total per
+# day. In-memory; a restart resets it. Allowlisted servers bypass nothing;
+# the cap applies to every gateway outbound call.
+_DEMO_CALLS: dict = {}
+DEMO_CALLS_PER_NUMBER_PER_DAY = 1
+DEMO_CALLS_TOTAL_PER_DAY = 10
+
+
+def _demo_call_allowed(phone: str) -> Optional[str]:
+    today = datetime.now(timezone.utc).date().isoformat()
+    day = _DEMO_CALLS.get(today)
+    if day is None:
+        day = _DEMO_CALLS[today] = {"total": 0, "numbers": {}}
+    if day["numbers"].get(phone, 0) >= DEMO_CALLS_PER_NUMBER_PER_DAY:
+        return "One demo call per number per day. Try the on-screen phone instead."
+    if day["total"] >= DEMO_CALLS_TOTAL_PER_DAY:
+        return "Today's demo call budget is spent. Come back tomorrow."
+    day["numbers"][phone] = day["numbers"].get(phone, 0) + 1
+    day["total"] += 1
+    return None
+
 if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
@@ -259,6 +281,9 @@ def outbound_call(payload: OutboundCallRequest):
         raise HTTPException(status_code=403, detail="Number not in call allowlist")
     if not app_config.BOLNA_API_KEY or not app_config.BOLNA_AGENT_ID:
         raise HTTPException(status_code=503, detail="Live calling not configured on this server")
+    refused = _demo_call_allowed(phone)
+    if refused:
+        raise HTTPException(status_code=429, detail=refused)
     from src.bolna_client import BolnaRecoveryClient
 
     try:
