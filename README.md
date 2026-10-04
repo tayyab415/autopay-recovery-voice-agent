@@ -1,99 +1,99 @@
-# Autopay Recovery Voice Agent (Nexus Cloud)
+# Autopay recovery voice agent
 
-Offline-first autopay dunning system: a merchant gateway with policy guardrails,
-an offline dialogue simulator, a Bolna voice client, a recovery console UI,
-and a CLI runner — with 10 synthetic failure personas covering every dunning path.
+My submission for the voice-agent option of the Forward-Deployed Engineer take-home. The merchant is fictional. I called it Nexus Cloud. Ten customers missed an autopay, each for a different reason, and a voice agent calls them to recover it.
 
-## Architecture
+## What the brief asked for
 
-Two layers, per the design spec:
+One working build, setup notes, no real customer data or secrets in the repo. I took the autopay recovery agent.
 
-- **Knowledge Layer** (`src/playbook.py`, `src/tools.py`, `src/ledger.py`, `src/disposition.py`, `src/policy_engine.py`)
-  - `Playbook` maps each of the 10 failure codes to the actions the agent may take, plus the directions it must follow.
-  - `ToolService` is the only writer. Bolna, the console, and the simulator all call it. Tools take real arguments (`target_date`, `channel`, `summary`, `reason`). A disallowed action returns 422 with a speakable message and the allowed list.
-  - Guardrails live in the tool, not the prompt: reschedule within 14 days, one late-fee waiver per year, principal never waived, a second identical payment link does not push again, do-not-call blocks later collection, disputed and cancelled accounts cannot be collected.
-  - `Ledger` keeps the 10 accounts and an audit row for every tool call. `disposition.py` stamps `last_disposition`, `recovery_probability`, and `next_touch_at` when a tool succeeds or a Bolna webhook arrives. No-answer schedules a retry only while the account is still pending.
-- **Intelligence Layer** (`src/bolna_client.py`, `src/simulator.py`, `src/gateway.py`)
-  - `gateway.py` is the HTTP face of the tool service, the Bolna webhook, mock checkout, and the console.
-  - `bolna_client.py` publishes the same tools to Bolna with the arguments filled in (a reschedule call sends `target_date`, not just `customer_id`). The system prompt says to call `get_account` first and to speak tool rejections.
-  - `simulator.py` is a scripted caller for offline tests. It chooses a tool from the utterance. It does not change account state itself.
-- **Presentation / Ops** (`static/`, `src/runner.py`, `demo/`)
-  - `static/index.html` + `static/app.js` — Merchant Recovery Console (metrics,
-    customer table, trigger modal, transcript/timeline/audio drawer).
-  - `src/runner.py` — `list` / `simulate` / `call` / `serve` commands.
+- Ten fictional accounts live in `data/customers.json`.
+- A judge can run the whole thing end to end. The hosted console places the call, the agent uses merchant tools while the person is still talking, and a mock checkout marks the account recovered.
+- Calls go only to a number I control. Outbound dialing is allowlisted. Judges can also pick up a phone drawn right on the console, so the demo never needs their number.
+- No API keys, passwords, or card data in this repo. Keys stay in the server environment.
 
-## The 10 Failure Personas (why each needs distinct treatment)
+## Try it
 
-| ID | Persona | Failure | Correct treatment |
-|----|---------|---------|-------------------|
-| CUST-01 | Priya Sharma | CARD_EXPIRED | Fresh link — card renewed, money available |
-| CUST-02 | Rahul Verma | INSUFFICIENT_FUNDS | Reschedule to salary date (5th), never pressure |
-| CUST-03 | Ananya Iyer | BANK_GATEWAY_TIMEOUT | Simple retry link — bank's fault, not customer's |
-| CUST-04 | Vikram Patel | MANDATE_LIMIT_EXCEEDED | Split checkout link — auto-debit cap can't cover invoice |
-| CUST-05 | Sneha Kulkarni | SUSPECTED_PHISHING | Anchor trust on official `pay.nexuscloud.io` domain |
-| CUST-06 | Arjun Mehta | DISPUTED_CHARGE | Escalate to billing — never collect a disputed amount |
-| CUST-07 | Rohit Roy | CANCELLATION_CLAIMED | Log + escalate — retrying a cancelled plan is a violation |
-| CUST-08 | Pooja Nair | LATE_FEE_OBJECTION | Waive Rs.350 once (policy allows 1/yr) or fresh link |
-| CUST-09 | Harish Reddy | HARD_REFUSAL_HOSTILE | Honor do-not-call instantly, de-escalate |
-| CUST-10 | Neha Joshi | VOICEMAIL_NO_ANSWER | Low-pressure retry link for missed contact |
+https://autopay-recovery-1027824348124.us-central1.run.app
 
-## Live Demo (hosted)
+The page is the merchant console. A customer phone sits to the right of the table, or below it on a narrow window.
 
-Docker app on Cloud Run (scale-to-zero, ~$0 idle): https://autopay-recovery-1027824348124.us-central1.run.app
+Click a row. Nexus Cloud rings that phone. Press Answer, allow the microphone, say hello. The agent stays quiet until it hears a greeting, then introduces itself once and pulls the account. Talk the way that customer would. If the agent sends a payment link, open Messages on the same phone. The text holds a checkout link, and paying it marks the account recovered.
 
-Open it, hit Trigger on any row, Send payment link, open the checkout URL, tap Pay.
-No keys or phone needed for the checkout. HTTPS with the lock icon.
+Run Simulation on a row runs the same tools with no microphone and no Bolna call. Call my phone dials an allowlisted handset only.
 
-## Setup & Run (< 2 minutes)
+The ledger is in memory. A restart, including Cloud Run scaling to zero, puts all ten accounts back to their starting state.
+
+## Why I split it in two
+
+A voice model is fluent and unaccountable. Give it a merchant's billing rules as prompt text and it will agree to a date past policy, waive a fee twice, or collect a bill the customer already disputed, all in a perfectly polite tone. I did not want politeness to be the thing standing between the merchant and its money. So the rules live somewhere the model cannot rewrite them mid-call.
+
+The intelligence layer listens and talks. Here that is Bolna: Deepgram transcribes, GPT-4.1-mini picks the next turn, ElevenLabs speaks. I treat all of that as replaceable. If a better voice stack appears next quarter, it should slot in without touching a single billing rule.
+
+The knowledge layer is the merchant system the voice model has to ask before it acts. It owns three things.
+
+First, tools that carry the full decision. A reschedule brings the date the customer agreed to. A payment link brings the channel. A dispute brings a summary. A tool that only got a customer id could check none of that, and that gap is exactly where a polite agent books the wrong outcome.
+
+Second, a playbook per failure code in `src/playbook.py`. On its first spoken turn the agent calls `get_account`, and the answer tells it what this account allows plus a short instruction. An expired card gets one fresh link. A salary-day miss gets a reschedule inside 14 days before anyone mentions a link. A disputed bill gets a ticket and a pause. A hostile refusal gets do-not-call and the call ends.
+
+Third, one door everything walks through. Bolna, the console buttons, and the offline simulator all call `ToolService` in `src/tools.py`. When the model asks for something the playbook refuses, the tool answers 422 with a sentence the agent can read out plus the actions still allowed. So the spoken "I can't do that, but I can do this" comes from code, not from the model's judgment. After a tool succeeds, the ledger updates, an audit row lands, and the account gets stamped with what happened, how likely recovery looks now, and when to try again.
+
+The prompt in `src/bolna_client.py` stays short on purpose. It tells the model to wait for hello, call `get_account`, read rejections word for word, and confirm only what a tool already approved. Dates, the one-waiver rule, and "do not collect this bill" are enforced in `src/policy_engine.py` and `src/tools.py`, where `pytest` hits them without placing a single call.
+
+That is the bet of this submission. The voice provider is a commodity. The books, the policy, and the next touch are the product, and they survive a change of voice provider untouched.
+
+## How a call actually flows
+
+The page sends only a customer id when a browser call starts. The server fills in the name, amount, and failure code from the ledger and mints the Bolna session. The key never reaches the browser.
+
+A payment link is stored as a message on that customer's console phone. Asking for the same link twice on the same channel returns the existing URL instead of sending a second text. When the call ends, the Bolna webhook stores the transcript. A no-answer schedules a retry only while the account is still pending, so an account that already got its link is left alone.
+
+## The ten accounts
+
+| ID | Customer | Failure | What the playbook allows |
+|----|----------|---------|--------------------------|
+| CUST-01 | Priya Sharma | Card expired | One fresh checkout link |
+| CUST-02 | Rahul Verma | Insufficient funds | Reschedule to a date they agree to, inside 14 days |
+| CUST-03 | Ananya Iyer | Bank timeout | Re-poll the mandate. A manual link only if they ask to pay that way |
+| CUST-04 | Vikram Patel | Mandate limit exceeded | One-time checkout for the full amount |
+| CUST-05 | Sneha Kulkarni | Suspected phishing | In-app verification. The only domain the agent may name is pay.nexuscloud.io |
+| CUST-06 | Arjun Mehta | Disputed charge | Open a dispute and pause dunning. A payment link is refused |
+| CUST-07 | Rohit Roy | Cancellation claimed | Log the cancellation and pause. A payment link is refused |
+| CUST-08 | Pooja Nair | Late fee objection | Waive the Rs 350 fee once. The principal stays |
+| CUST-09 | Harish Reddy | Hostile refusal | Do-not-call, then stop |
+| CUST-10 | Neha Joshi | Voicemail | Schedule a retry |
+
+## Evidence
+
+Judge it on the console call for Priya Sharma, execution `3e7ce7ba-feb6-4ef6-8416-bc0f38d2f0ad`. She said hello, the agent pulled the account, she asked for SMS, the gateway accepted the link, and the account moved to `LINK_SENT`. Transcript and recording URL are in `demo/live_call_app_e2e.json`.
+
+The older live files in `demo/` predate the finished tool arguments. Use the console call above.
+
+Offline dialogues for all ten personas sit in `demo/transcripts/sample_calls.md` and are labeled simulated. `pytest` covers the policy refusals, all ten personas, the webhook, and the console page. No network, no key.
+
+## Setup
 
 ```bash
 pip install -r requirements.txt
-python3 -m pytest -q            # offline verification, all green
-python3 -m src.runner serve     # http://localhost:8000 → Autopay Recovery Console
+python3 -m pytest -q
+python3 -m src.runner serve
 ```
 
-Console: metric cards (Outstanding Dunning ARR / Accounts in Recovery / Recovery Rate),
-customer table, per-row **Trigger** modal (**Talk in browser**, **Run Simulation** offline,
-**Call my phone** for an allowlisted number), and a detail drawer (transcript, tool timeline, audio player).
+The console is at http://localhost:8000.
 
-CLI:
+Live calling needs `BOLNA_API_KEY` and `BOLNA_AGENT_ID` on the server. Set `CALL_ALLOWLIST` to the E.164 numbers you control. With that list set, any other number is refused. `PUBLIC_BASE_URL` is the origin Bolna uses to reach the tools, and the origin checkout links point at.
 
 ```bash
-python3 -m src.runner list                          # 10 records + statuses
-printf '\n' | python3 -m src.runner simulate --customer CUST-01   # offline dialogue
-python3 -m src.runner call --customer CUST-01 --phone +91XXXXXXXXXX  # live (needs BOLNA_API_KEY)
+python3 -m src.runner list
+printf '\n' | python3 -m src.runner simulate --customer CUST-02
+python3 -m src.runner call --customer CUST-01 --phone +91XXXXXXXXXX
 ```
 
-## Offline Verification (no keys, no network)
+## Limits
 
-```bash
-python3 -m pytest -v
-printf '\n' | python3 -m src.runner simulate --customer CUST-06
-```
+The ledger resets on restart. Production would be Postgres, with the same audit log the tool service already writes.
 
-`pytest` covers models, policy guardrails, all 4 tool endpoints + webhook,
-Bolna payload construction (no network), all 10 simulator personas, and UI serving.
+Tool routes have no merchant auth. They are open so the demo and the voice agent can reach them. Real merchant traffic needs scoped tokens first.
 
-## Demo Evidence
+Browser calling needs Bolna's web-call beta enabled on the account. If it is off, Answer fails with that reason on the phone screen. Outbound to an allowlisted number still works.
 
-- `demo/recordings.json` — per-customer tool/reply/status records from the offline
-  simulator, explicitly flagged `"simulated_offline": true`.
-- `demo/transcripts/sample_calls.md` — readable offline dialogue logs, labeled simulated.
-- `demo/live_call_cust01.json`, `demo/live_call_cust01_take2.json`,
-  `demo/live_call_cust02.json`, `demo/live_call_cust03_proof.json` — four real Bolna
-  executions against a test number the developer controls, with transcripts and
-  recording URLs. The CUST-03 proof call fired `POST /api/tools/send-link` against
-  the public gateway (logged 200) and flipped the merchant DB to `LINK_SENT`.
-
-## Limitations & Production Recommendations
-
-- **In-memory store** — `CustomerStore` resets on restart; production needs Postgres
-  with optimistic locking and an audit log of every tool call.
-- **Scripted simulator** — offline runs pick a tool from the utterance, then the
-  tool service accepts or rejects it. Production dialogue is Bolna function calling
-  against that same service.
-- **Auth** — tool endpoints have no API keys; add merchant-scoped tokens before exposing.
-- **Audio** — the drawer player is wired but offline runs produce no audio; live Bolna
-  recordings plug in via webhook `transcript`/`recording_url`.
-- **Reschedule clock** — `validate_reschedule` defaults to UTC today; pin `current_date`
-  per merchant timezone in production.
+If I kept one thing from this repo, it would not be the console. It would be the playbook, the tool refusals, and the ledger. That part outlives any voice provider.
