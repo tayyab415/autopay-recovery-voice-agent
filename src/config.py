@@ -12,3 +12,5 @@ GATEWAY_PORT = int(os.environ.get("PORT", "8000"))
 PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
 NTFY_TOPIC = os.environ.get("NTFY_TOPIC", "nexuscloud-pay-q7x2k9")
 NTFY_BASE_URL = os.environ.get("NTFY_BASE_URL", "https://ntfy.sh").rstrip("/")
+BOLNA_AGENT_ID = os.environ.get("BOLNA_AGENT_ID", "")
+CALL_ALLOWLIST = [p.strip() for p in os.environ.get("CALL_ALLOWLIST", "").split(",") if p.strip()]

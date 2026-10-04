@@ -118,11 +118,41 @@ async function runSimulation() {
 
 async function liveCall() {
   const phone = document.getElementById("modal-phone").value.trim();
+  const box = document.getElementById("modal-result");
   if (!phone) {
-    document.getElementById("modal-result").textContent = "Provide a test phone number for Live Call.";
+    box.textContent = "Enter your test number first (the allowlisted one).";
     return;
   }
-  document.getElementById("modal-result").textContent = "Live Call requires server-side Bolna credentials; use runner.py call --customer " + selectedCustomer.customer_id + " --phone " + phone;
+  box.textContent = "Placing call… pick up your phone.";
+  const res = await fetch(api("/api/calls/outbound"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ customer_id: selectedCustomer.customer_id, phone }),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    box.textContent = `Call refused (${res.status}): ${data.detail || JSON.stringify(data)}`;
+    return;
+  }
+  box.textContent = `Call queued. Execution ${data.execution_id} — talk to the agent, then watch the drawer fill in.`;
+  pollCall(data.execution_id, selectedCustomer.customer_id);
+}
+
+async function pollCall(executionId, customerId) {
+  const box = document.getElementById("modal-result");
+  for (let i = 0; i < 18; i++) {
+    await new Promise((r) => setTimeout(r, 10000));
+    const res = await fetch(api(`/api/calls/${executionId}`));
+    if (!res.ok) continue;
+    const d = await res.json();
+    box.textContent = `Call ${d.status} — ${d.conversation_duration || 0}s, cost ${d.total_cost ?? "?"}.` +
+      (d.transcript ? `\n${d.transcript.slice(-500)}` : "\n(listening…)");
+    if (d.status === "completed" && d.transcript) {
+      await loadCustomers();
+      openDrawer(customerId);
+      break;
+    }
+  }
 }
 
 async function openDrawer(customerId) {

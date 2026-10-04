@@ -7,6 +7,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from src import config as app_config
 from src.config import NTFY_BASE_URL, NTFY_TOPIC, STATIC_DIR
 from src.disposition import apply_bolna_event, stamp
 from src.ledger import db
@@ -63,6 +64,15 @@ class CustomerToolRequest(BaseModel):
 class SimulateRequest(BaseModel):
     customer_id: str
     user_speech: str = ""
+
+
+class OutboundCallRequest(BaseModel):
+    customer_id: str
+    phone: str
+
+
+def _norm_phone(raw: str) -> str:
+    return "".join(raw.split())
 
 
 def publish_push(title: str, message: str, topic: Optional[str] = None) -> bool:
@@ -220,6 +230,56 @@ def _find_by_ref(ref: str):
 @app.post("/api/webhook/bolna")
 def bolna_webhook(payload: dict):
     return apply_bolna_event(db, tool_service, payload)
+
+
+@app.post("/api/calls/outbound")
+def outbound_call(payload: OutboundCallRequest):
+    """Place a real Bolna call. Guarded: key + agent required, phone allowlisted.
+
+    The key stays server-side; the browser only sees execution IDs.
+    """
+    cust = db.get_customer(payload.customer_id)
+    if cust is None:
+        raise HTTPException(status_code=404, detail=f"Unknown customer: {payload.customer_id}")
+    phone = _norm_phone(payload.phone)
+    if not phone.startswith("+"):
+        raise HTTPException(status_code=422, detail="Phone must be E.164, e.g. +917007623382")
+    if app_config.CALL_ALLOWLIST and phone not in app_config.CALL_ALLOWLIST:
+        raise HTTPException(status_code=403, detail="Number not in call allowlist")
+    if not app_config.BOLNA_API_KEY or not app_config.BOLNA_AGENT_ID:
+        raise HTTPException(status_code=503, detail="Live calling not configured on this server")
+    from src.bolna_client import BolnaRecoveryClient
+
+    try:
+        res = BolnaRecoveryClient().trigger_outbound_call(
+            agent_id=app_config.BOLNA_AGENT_ID, customer=cust, phone=phone
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Bolna call failed: {exc}")
+    eid = res.get("execution_id") or res.get("run_id") or ""
+    return {"status": "queued", "execution_id": eid, "customer_id": cust.customer_id}
+
+
+@app.get("/api/calls/{execution_id}")
+def call_status(execution_id: str):
+    """Trimmed live status for polling. Key stays server-side."""
+    if not app_config.BOLNA_API_KEY:
+        raise HTTPException(status_code=503, detail="Live calling not configured on this server")
+    from src.bolna_client import BolnaRecoveryClient
+
+    try:
+        d = BolnaRecoveryClient().get_execution(execution_id)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Bolna lookup failed: {exc}")
+    tele = d.get("telephony_data") or {}
+    return {
+        "execution_id": execution_id,
+        "status": d.get("status"),
+        "conversation_duration": d.get("conversation_duration"),
+        "total_cost": d.get("total_cost"),
+        "transcript": d.get("transcript"),
+        "recording_url": tele.get("recording_url"),
+    }
 
 
 @app.post("/api/simulate")
