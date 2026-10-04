@@ -8,20 +8,15 @@ and a CLI runner — with 10 synthetic failure personas covering every dunning p
 
 Two layers, per the design spec:
 
-- **Knowledge Layer** (`src/models.py`, `data/customers.json`, `src/policy_engine.py`)
-  - `CustomerRecord` / `FailureCode` (10 codes) / `CustomerStatus` — the dunning source of truth.
-  - `PolicyEngine` — hard guardrails: reschedule ≤ 14 days out (`validate_reschedule`),
-    at most 1 late-fee waiver per year (`validate_waiver`). The agent can never
-    promise what policy forbids; violations return 422 with an explanatory error.
-- **Intelligence Layer** (`src/gateway.py`, `src/bolna_client.py`, `src/simulator.py`)
-  - `gateway.py` — FastAPI merchant backend: `GET /api/customers`,
-    `POST /api/tools/{send-link, reschedule, waive-fee, escalate-dispute}`,
-    `POST /api/webhook/bolna`, `POST /api/simulate`, plus `GET /` serving the console.
-  - `bolna_client.py` — Bolna V2 agent spec (Deepgram nova-2 STT + GPT-4.1-mini +
-    ElevenLabs Viraj TTS + 5 tool schemas) and live outbound-call trigger.
-  - `simulator.py` — deterministic offline `DialogueSimulator`: keyword intent routing
-    (do-not-call > dispute > reschedule > payment-link) that mutates the same store
-    the tools use. No network, no cost.
+- **Knowledge Layer** (`src/playbook.py`, `src/tools.py`, `src/ledger.py`, `src/disposition.py`, `src/policy_engine.py`)
+  - `Playbook` maps each of the 10 failure codes to the actions the agent may take, plus the directions it must follow.
+  - `ToolService` is the only writer. Bolna, the console, and the simulator all call it. Tools take real arguments (`target_date`, `channel`, `summary`, `reason`). A disallowed action returns 422 with a speakable message and the allowed list.
+  - Guardrails live in the tool, not the prompt: reschedule within 14 days, one late-fee waiver per year, principal never waived, a second identical payment link does not push again, do-not-call blocks later collection, disputed and cancelled accounts cannot be collected.
+  - `Ledger` keeps the 10 accounts and an audit row for every tool call. `disposition.py` stamps `last_disposition`, `recovery_probability`, and `next_touch_at` when a tool succeeds or a Bolna webhook arrives. No-answer schedules a retry only while the account is still pending.
+- **Intelligence Layer** (`src/bolna_client.py`, `src/simulator.py`, `src/gateway.py`)
+  - `gateway.py` is the HTTP face of the tool service, the Bolna webhook, mock checkout, and the console.
+  - `bolna_client.py` publishes the same tools to Bolna with the arguments filled in (a reschedule call sends `target_date`, not just `customer_id`). The system prompt says to call `get_account` first and to speak tool rejections.
+  - `simulator.py` is a scripted caller for offline tests. It chooses a tool from the utterance. It does not change account state itself.
 - **Presentation / Ops** (`static/`, `src/runner.py`, `demo/`)
   - `static/index.html` + `static/app.js` — Merchant Recovery Console (metrics,
     customer table, trigger modal, transcript/timeline/audio drawer).
@@ -44,9 +39,7 @@ Two layers, per the design spec:
 
 ## Live Demo (hosted)
 
-Console, hosted on AWS S3 with the API on Beanstalk behind it:
-
-http://nexuscloud-recovery.s3-website-us-east-1.amazonaws.com
+Console, hosted on AWS with HTTPS: https://d2ncaw9vlxv1qz.cloudfront.net
 
 Open it, hit Trigger on any row, Send payment link, open the checkout URL, tap Pay.
 No keys or phone needed.
@@ -96,9 +89,9 @@ Bolna payload construction (no network), all 10 simulator personas, and UI servi
 
 - **In-memory store** — `CustomerStore` resets on restart; production needs Postgres
   with optimistic locking and an audit log of every tool call.
-- **Keyword intent routing** — the simulator is deterministic by design; production
-  should use the LLM function-calling path with the policy engine as a server-side
-  validator (defense in depth, already the pattern here).
+- **Scripted simulator** — offline runs pick a tool from the utterance, then the
+  tool service accepts or rejects it. Production dialogue is Bolna function calling
+  against that same service.
 - **Auth** — tool endpoints have no API keys; add merchant-scoped tokens before exposing.
 - **Audio** — the drawer player is wired but offline runs produce no audio; live Bolna
   recordings plug in via webhook `transcript`/`recording_url`.
