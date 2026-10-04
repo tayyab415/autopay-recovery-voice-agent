@@ -27,7 +27,7 @@ The ledger is in memory. A restart, including Cloud Run scaling to zero, puts al
 
 A voice model is fluent and unaccountable. Give it a merchant's billing rules as prompt text and it will agree to a date past policy, waive a fee twice, or collect a bill the customer already disputed, all in a perfectly polite tone. I did not want politeness to be the thing standing between the merchant and its money. So the rules live somewhere the model cannot rewrite them mid-call.
 
-The intelligence layer listens and talks. Here that is Bolna: Deepgram transcribes, GPT-4.1-mini picks the next turn, ElevenLabs speaks. I treat all of that as replaceable. If a better voice stack appears next quarter, it should slot in without touching a single billing rule.
+The intelligence layer listens and talks. Here that is Bolna: Deepgram transcribes, GPT-6 Luna answers on my own OpenAI key, ElevenLabs speaks. I treat all of that as replaceable. If a better voice stack appears next quarter, it should slot in without touching a single billing rule.
 
 The knowledge layer is the merchant system the voice model has to ask before it acts. It owns three things.
 

@@ -194,7 +194,7 @@ def build_agent_payload(webhook_url: str, gateway_base_url: str = "") -> Dict[st
                     "llm_agent": {
                         "agent_type": "simple_llm_agent",
                         "agent_flow_type": "streaming",
-                        "llm_config": {"provider": "openai", "model": "gpt-4.1-mini", "max_tokens": 200, "temperature": 0.2},
+                        "llm_config": {"provider": "openai", "model": "gpt-6-luna", "max_tokens": 200, "temperature": 1},
                     },
                     "synthesizer": {
                         "provider": "elevenlabs",
