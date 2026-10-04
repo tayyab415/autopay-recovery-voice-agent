@@ -185,7 +185,7 @@ def build_agent_payload(webhook_url: str, gateway_base_url: str = "") -> Dict[st
     ]
     agent_config: Dict[str, Any] = {
         "agent_name": "autopay-recovery-agent",
-        "agent_welcome_message": "Hi {{customer_name}}! This is NexusCloud calling about your recent autopay of Rs. {{amount_due}}, which could not be debited. Do you have a quick minute?",
+        "agent_welcome_message": "",
         "tasks": [
             {
                 "task_type": "conversation",
@@ -234,7 +234,12 @@ def _system_prompt() -> str:
         "of Rs. {{amount_due}} (reason code {{failure_code}}). "
         "You work for the merchant, not a collections agency. Never threaten to shut off service. "
         "Keep each spoken turn under two sentences. "
-        "On the first turn, call get_account and obey its directions and allowed_actions. "
+        "The line opens in silence on purpose. Do not speak until the person says hello, hi, or hey. "
+        "People miss the first words if you talk the moment the call connects. "
+        "After they greet you, say the introduction once: their name, Nexus Cloud, the failed amount, "
+        "and ask if they have a minute. If their first words are not a greeting, give that same introduction "
+        "and then answer what they said. Do not repeat the introduction later. "
+        "On that first spoken turn, call get_account and obey its directions and allowed_actions. "
         "Do not promise a date, a waiver, or a refund until a tool confirms it. "
         "If a tool returns a rejection, say that message and offer only an allowed action. "
         "reschedule_debit requires target_date as YYYY-MM-DD, never more than 14 days out, and only a date the customer agreed to. "
@@ -300,6 +305,20 @@ class BolnaRecoveryClient:
             resp = requests.post(f"{self.base_url}/call", json=body, headers=self._headers(), timeout=30)
         resp.raise_for_status()
         return resp.json()
+
+    def mint_web_session(self, agent_id: str, user_data: Dict[str, Any]) -> Any:
+        """Mint a one-time browser-call session. The API key stays on this request."""
+        resp = requests.post(
+            f"{self.base_url}/web-call/session",
+            json={"agent_id": agent_id, "user_data": user_data},
+            headers=self._headers(),
+            timeout=20,
+        )
+        try:
+            body = resp.json()
+        except ValueError:
+            body = {"detail": resp.text[:300]}
+        return resp.status_code, body
 
     def get_execution(self, execution_id: str) -> Dict[str, Any]:
         resp = requests.get(f"{self.base_url}/executions/{execution_id}", headers=self._headers(), timeout=15)

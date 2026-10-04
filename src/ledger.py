@@ -11,6 +11,7 @@ class CustomerStore:
         seed = customers if customers is not None else load_customers()
         self._customers: Dict[str, CustomerRecord] = {c.customer_id: c for c in seed}
         self._audit: List[dict] = []
+        self._messages: List[dict] = []
 
     def list_customers(self) -> List[CustomerRecord]:
         with self._lock:
@@ -31,6 +32,14 @@ class CustomerStore:
     def audit_for(self, customer_id: str) -> List[dict]:
         with self._lock:
             return [row for row in self._audit if row.get("customer_id") == customer_id]
+
+    def add_message(self, entry: dict) -> None:
+        with self._lock:
+            self._messages.append(entry)
+
+    def messages_for(self, customer_id: str) -> List[dict]:
+        with self._lock:
+            return [row for row in self._messages if row.get("customer_id") == customer_id]
 
 
 db = CustomerStore()

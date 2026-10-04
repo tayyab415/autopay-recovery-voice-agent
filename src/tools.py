@@ -208,10 +208,19 @@ class ToolService:
         note = ""
         if customer.failure_code == FailureCode.MANDATE_LIMIT_EXCEEDED:
             note = " This is a one-time checkout because the invoice is above the e-mandate cap."
-        pushed = bool(self.push(
-            f"NexusCloud autopay Rs.{total:.0f}",
-            f"Hi {customer.name}, your autopay of Rs.{total:.0f} failed ({customer.failure_code.value}). Pay securely: {checkout}",
-        ))
+        sms_body = (
+            f"Hi {customer.name}, your autopay of Rs.{total:.0f} failed ({customer.failure_code.value}). "
+            f"Pay securely: {checkout}"
+        )
+        pushed = bool(self.push(f"NexusCloud autopay Rs.{total:.0f}", sms_body))
+        self.store.add_message({
+            "at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "customer_id": customer.customer_id,
+            "channel": "whatsapp" if channel == "whatsapp" else "sms",
+            "sender": "NexusCloud",
+            "body": sms_body,
+            "checkout_url": checkout,
+        })
         customer.status = CustomerStatus.LINK_SENT
         customer.last_link_channel = channel
         customer.link_expires_at = expires
@@ -424,10 +433,19 @@ class ToolService:
                 duplicate=True,
             )
             return self._audit(customer_id, tool, {}, result)
-        self.push(
-            "NexusCloud call verification",
-            f"Hi {customer.name}, NexusCloud is on a call about your autopay. Confirm it in the app. Official domain: {PAY_LINK_DOMAIN}.",
+        verify_body = (
+            f"Hi {customer.name}, NexusCloud is on a call about your autopay. "
+            f"Confirm it in the app. Official domain: {PAY_LINK_DOMAIN}."
         )
+        self.push("NexusCloud call verification", verify_body)
+        self.store.add_message({
+            "at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "customer_id": customer.customer_id,
+            "channel": "sms",
+            "sender": "NexusCloud",
+            "body": verify_body,
+            "checkout_url": None,
+        })
         customer.status = CustomerStatus.VERIFICATION_SENT
         stamp(customer, "VERIFICATION_SENT", self._today())
         self.store.update(customer)

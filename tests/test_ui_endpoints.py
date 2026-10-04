@@ -9,6 +9,9 @@ def test_index_html_served():
     assert response.status_code == 200
     assert "Nexus Cloud" in response.text
     assert "Autopay Recovery Console" in response.text
+    assert "Talk in browser" in response.text
+    assert "Answer" in response.text
+    assert 'id="sms-thread"' in response.text
 
 
 def test_simulation_endpoint():

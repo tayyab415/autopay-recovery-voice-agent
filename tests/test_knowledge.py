@@ -53,6 +53,18 @@ def test_principal_cannot_be_waived():
     assert service.store.get_customer("CUST-08").waivers_used == 0
 
 
+def test_payment_link_shows_up_as_one_sms():
+    store, service = _service()
+    service.send_link("CUST-01", "sms")
+    service.send_link("CUST-01", "sms")
+    notes = store.messages_for("CUST-01")
+    assert len(notes) == 1
+    assert notes[0]["channel"] == "sms"
+    assert notes[0]["sender"] == "NexusCloud"
+    assert "Pay securely" in notes[0]["body"]
+    assert notes[0]["checkout_url"].endswith("/pay/cust-01-4521")
+
+
 def test_duplicate_link_does_not_push_again():
     store, service = _service()
     pushes = {"n": 0}
@@ -132,6 +144,8 @@ def test_bolna_reschedule_tool_sends_the_date():
     assert tools["mark_do_not_call"]["value"]["url"].endswith("/api/tools/donotcall")
     assert "get_account" in tools
     prompt = payload["agent_prompts"]["task_1"]["system_prompt"]
+    assert payload["agent_config"]["agent_welcome_message"] == ""
+    assert "Do not speak until the person says hello" in prompt
     assert "get_account" in prompt
     assert "14 days" in prompt
 

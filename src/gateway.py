@@ -71,6 +71,10 @@ class OutboundCallRequest(BaseModel):
     phone: str
 
 
+class WebSessionRequest(BaseModel):
+    user_data: Optional[dict] = None
+
+
 def _norm_phone(raw: str) -> str:
     return "".join(raw.split())
 
@@ -115,6 +119,13 @@ def get_audit(customer_id: str):
     if db.get_customer(customer_id) is None:
         raise HTTPException(status_code=404, detail=f"Unknown customer: {customer_id}")
     return db.audit_for(customer_id)
+
+
+@app.get("/api/customers/{customer_id}/messages")
+def get_messages(customer_id: str):
+    if db.get_customer(customer_id) is None:
+        raise HTTPException(status_code=404, detail=f"Unknown customer: {customer_id}")
+    return db.messages_for(customer_id)
 
 
 @app.get("/api/scenarios")
@@ -258,6 +269,42 @@ def outbound_call(payload: OutboundCallRequest):
         raise HTTPException(status_code=502, detail=f"Bolna call failed: {exc}")
     eid = res.get("execution_id") or res.get("run_id") or ""
     return {"status": "queued", "execution_id": eid, "customer_id": cust.customer_id}
+
+
+def _call_user_data(cust) -> dict:
+    return {
+        "customer_id": cust.customer_id,
+        "customer_name": cust.name,
+        "amount_due": cust.amount_due,
+        "failure_code": cust.failure_code.value,
+    }
+
+
+@app.post("/api/calls/web-session")
+def web_session(payload: WebSessionRequest):
+    """Mint a Bolna browser-call session. No phone number. The key never leaves the server.
+
+    user_data from the browser is not trusted. The ledger supplies the name,
+    amount, and failure code for the chosen customer id.
+    """
+    requested = (payload.user_data or {}).get("customer_id")
+    cust = db.get_customer(requested) if requested else None
+    if cust is None:
+        raise HTTPException(status_code=404, detail="Pick a customer from the table")
+    if not app_config.BOLNA_API_KEY or not app_config.BOLNA_AGENT_ID:
+        raise HTTPException(status_code=503, detail="Browser calling is not configured on this server")
+    from src.bolna_client import BolnaRecoveryClient
+
+    try:
+        code, body = BolnaRecoveryClient().mint_web_session(app_config.BOLNA_AGENT_ID, _call_user_data(cust))
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Bolna session failed: {exc}")
+    if code >= 400:
+        detail = body.get("message") or body.get("detail") or "Bolna refused the browser session"
+        if isinstance(detail, (dict, list)):
+            detail = str(detail)
+        raise HTTPException(status_code=502, detail=str(detail))
+    return body
 
 
 @app.get("/api/calls/{execution_id}")

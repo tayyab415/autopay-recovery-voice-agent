@@ -2,6 +2,9 @@
 let customers = [];
 let scenarios = {};
 let selectedCustomer = null;
+let phoneCustomer = null;
+let smsSeen = 0;
+let callTimer = null;
 
 const CLOSED = new Set(["RESOLVED", "DO_NOT_CALL", "CANCELLATION_LOGGED", "DISPUTE_ESCALATED"]);
 // Empty = same-origin (local serve). The S3-hosted page sets an absolute backend.
@@ -45,11 +48,11 @@ function renderTable(rows) {
     const btn = document.createElement("button");
     btn.className = "btn-primary";
     btn.textContent = "Trigger";
-    btn.onclick = () => openModal(c.customer_id);
+    btn.onclick = () => { openModal(c.customer_id); ringPhone(c); };
     const td = document.createElement("td");
     td.appendChild(btn);
     tr.appendChild(td);
-    tr.onclick = (e) => { if (e.target !== btn) openDrawer(c.customer_id); };
+    tr.onclick = (e) => { if (e.target !== btn) { ringPhone(c); openDrawer(c.customer_id); } };
     tbody.appendChild(tr);
   });
 }
@@ -114,6 +117,156 @@ async function runSimulation() {
   const data = await res.json();
   document.getElementById("modal-result").textContent = JSON.stringify(data, null, 2);
   showTranscript(selectedCustomer.customer_id);
+}
+
+let browserCall = null;
+
+function showPhonePanel(which) {
+  document.getElementById("phone-idle").hidden = which !== "idle";
+  document.getElementById("phone-incoming").hidden = which !== "incoming";
+  document.getElementById("phone-active").hidden = which !== "active";
+}
+
+function ringPhone(customer) {
+  phoneCustomer = customer;
+  selectedCustomer = customer;
+  smsSeen = 0;
+  document.getElementById("phone-incoming-who").textContent =
+    `${customer.name} · ${customer.failure_code} · Rs.${customer.amount_due}`;
+  showPhonePanel("incoming");
+  showPhoneTab("call");
+  refreshSms();
+}
+
+function showPhoneTab(tab) {
+  const call = tab === "call";
+  document.getElementById("phone-call").hidden = !call;
+  document.getElementById("phone-sms").hidden = call;
+  document.getElementById("phone-tab-call").classList.toggle("on", call);
+  document.getElementById("phone-tab-sms").classList.toggle("on", !call);
+  if (!call) {
+    smsSeen = Number(document.getElementById("sms-badge").dataset.count || 0);
+    document.getElementById("sms-badge").hidden = true;
+    document.getElementById("phone-sms-hint").hidden = true;
+  }
+}
+
+function absUrl(url) {
+  if (!url) return "";
+  if (url.startsWith("http")) return url;
+  return api(url);
+}
+
+async function refreshSms() {
+  if (!phoneCustomer) return;
+  const res = await fetch(api(`/api/customers/${phoneCustomer.customer_id}/messages`));
+  if (!res.ok) return;
+  const rows = await res.json();
+  const thread = document.getElementById("sms-thread");
+  const empty = document.getElementById("sms-empty");
+  empty.hidden = rows.length > 0;
+  thread.innerHTML = rows.map((m) => {
+    const link = m.checkout_url
+      ? `<p><a href="${escapeHtml(absUrl(m.checkout_url))}" target="_blank" rel="noopener">Open checkout</a></p>`
+      : "";
+    return `<div class="sms-bubble"><div class="sms-from">${escapeHtml(m.sender || "NexusCloud")} · ${escapeHtml((m.channel || "sms").toUpperCase())} · ${escapeHtml(m.at || "")}</div><p>${escapeHtml(m.body || "")}</p>${link}</div>`;
+  }).join("");
+  const badge = document.getElementById("sms-badge");
+  badge.dataset.count = String(rows.length);
+  const unread = Math.max(0, rows.length - smsSeen);
+  const onMessages = !document.getElementById("phone-sms").hidden;
+  badge.hidden = unread === 0 || onMessages;
+  badge.textContent = String(unread);
+  document.getElementById("phone-sms-hint").hidden = unread === 0 || document.getElementById("phone-active").hidden;
+  if (onMessages) smsSeen = rows.length;
+}
+
+function startCallTimer() {
+  clearInterval(callTimer);
+  const started = Date.now();
+  callTimer = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - started) / 1000);
+    const mm = String(Math.floor(elapsed / 60)).padStart(2, "0");
+    const ss = String(elapsed % 60).padStart(2, "0");
+    document.getElementById("phone-timer").textContent = `${mm}:${ss}`;
+  }, 250);
+}
+
+function stopCallTimer() {
+  clearInterval(callTimer);
+  callTimer = null;
+}
+
+function browserCallError(err) {
+  if (!err) return "Browser call failed.";
+  if (err.code === "microphone_denied") return "Microphone permission was blocked. Allow the mic for this page and try again.";
+  if (err.code === "at_capacity" && err.scope === "not_enabled") return "Browser calling is not turned on for this Bolna account yet.";
+  if (err.code === "autoplay_blocked") return "The browser blocked audio. Click Talk in browser again.";
+  return err.message || "Browser call failed.";
+}
+
+async function talkInBrowser() {
+  const box = document.getElementById("modal-result");
+  const hangup = document.getElementById("btn-hangup");
+  if (typeof BolnaWebCall !== "function") {
+    box.textContent = "The browser calling library did not load. Refresh and try again.";
+    return;
+  }
+  const customer = selectedCustomer;
+  box.textContent = "Connecting. Allow the microphone. Say hello when the call screen is up.";
+  document.getElementById("phone-call-status").textContent = "Connecting. Allow the microphone, then say hello.";
+  showPhonePanel("active");
+  showPhoneTab("call");
+  const call = new BolnaWebCall({
+    sessionUrl: api("/api/calls/web-session"),
+    userData: { customer_id: customer.customer_id },
+  });
+  browserCall = call;
+  hangup.hidden = false;
+  call.on("state-change", (state) => {
+    if (state === "active") {
+      box.textContent = "On the call. Say hello. The agent waits for that before it speaks.";
+      document.getElementById("phone-call-status").textContent = "Say hello. The agent waits for that.";
+      startCallTimer();
+    }
+  });
+  call.on("error", (err) => {
+    box.textContent = browserCallError(err);
+    document.getElementById("phone-call-status").textContent = browserCallError(err);
+    hangup.hidden = true;
+    stopCallTimer();
+    showPhonePanel(phoneCustomer ? "incoming" : "idle");
+  });
+  call.on("call-end", () => {
+    hangup.hidden = true;
+    stopCallTimer();
+    showPhonePanel(phoneCustomer ? "incoming" : "idle");
+    const runId = typeof call.getRunId === "function" ? call.getRunId() : "";
+    box.textContent = runId ? "Call ended. Updating the account." : "Call ended.";
+    document.getElementById("phone-call-status").textContent = "Call ended.";
+    if (runId) pollCall(runId, customer.customer_id);
+    else showTranscript(customer.customer_id);
+  });
+  try {
+    await call.start();
+  } catch (err) {
+    hangup.hidden = true;
+    stopCallTimer();
+    box.textContent = browserCallError(err);
+    document.getElementById("phone-call-status").textContent = browserCallError(err);
+    showPhonePanel(phoneCustomer ? "incoming" : "idle");
+  }
+}
+
+function hangUpBrowser() {
+  if (browserCall && typeof browserCall.stop === "function") browserCall.stop();
+  stopCallTimer();
+}
+
+function declineCall() {
+  hangUpBrowser();
+  showPhonePanel("idle");
+  phoneCustomer = null;
 }
 
 async function liveCall() {
@@ -209,7 +362,19 @@ document.getElementById("btn-tool-reschedule").onclick = () => runTool("reschedu
 document.getElementById("btn-tool-waive").onclick = () => runTool("waive");
 document.getElementById("btn-tool-escalate").onclick = () => runTool("escalate");
 document.getElementById("btn-run-simulation").onclick = runSimulation;
+document.getElementById("btn-browser-call").onclick = talkInBrowser;
+document.getElementById("btn-hangup").onclick = hangUpBrowser;
+document.getElementById("btn-answer").onclick = () => { if (phoneCustomer) { selectedCustomer = phoneCustomer; talkInBrowser(); } };
+document.getElementById("btn-decline").onclick = declineCall;
+document.getElementById("btn-phone-hangup").onclick = hangUpBrowser;
+document.getElementById("phone-tab-call").onclick = () => showPhoneTab("call");
+document.getElementById("phone-tab-sms").onclick = () => { showPhoneTab("sms"); refreshSms(); };
+document.getElementById("phone-sms-hint").onclick = () => showPhoneTab("sms");
 document.getElementById("btn-live-call").onclick = liveCall;
+setInterval(() => {
+  document.getElementById("phone-clock").textContent = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  refreshSms();
+}, 2000);
 document.getElementById("btn-drawer-close").onclick = () =>
   document.getElementById("detail-drawer").classList.remove("open");
 

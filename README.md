@@ -39,11 +39,10 @@ Two layers, per the design spec:
 
 ## Live Demo (hosted)
 
-Docker app on AWS (AWS credits, $0 GCP): http://nexuscloud-recovery.us-east-1.elasticbeanstalk.com
+Docker app on Cloud Run (scale-to-zero, ~$0 idle): https://autopay-recovery-1027824348124.us-central1.run.app
 
 Open it, hit Trigger on any row, Send payment link, open the checkout URL, tap Pay.
-No keys or phone needed for the checkout. Plain HTTP — Beanstalk single-instance
-has no free HTTPS without a load balancer, so browsers show "Not secure".
+No keys or phone needed for the checkout. HTTPS with the lock icon.
 
 ## Setup & Run (< 2 minutes)
 
