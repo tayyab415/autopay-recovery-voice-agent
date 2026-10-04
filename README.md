@@ -39,7 +39,7 @@ Two layers, per the design spec:
 
 ## Live Demo (hosted)
 
-Console, hosted on AWS with HTTPS: https://d2ncaw9vlxv1qz.cloudfront.net
+Console, hosted on AWS with HTTPS: https://nexuscloud-recovery.s3.amazonaws.com/index.html
 
 Open it, hit Trigger on any row, Send payment link, open the checkout URL, tap Pay.
 No keys or phone needed.
