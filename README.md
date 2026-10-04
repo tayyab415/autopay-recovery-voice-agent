@@ -15,9 +15,9 @@ One working build, setup notes, no real customer data or secrets in the repo. I 
 
 https://autopay-recovery-1027824348124.us-central1.run.app
 
-The page is the merchant console. A customer phone sits to the right of the table, or below it on a narrow window.
+The page is the merchant console. A customer phone sits to the right of the table, or below it on a narrow window. The phone has two tabs. Call is the handset: it rings, you answer, talk into your microphone. Messages is the SMS inbox: payment links land there as texts, with a badge count.
 
-Click a row. Nexus Cloud rings that phone. Press Answer, allow the microphone, say hello. The agent stays quiet until it hears a greeting, then introduces itself once and pulls the account. Talk the way that customer would. If the agent sends a payment link, open Messages on the same phone. The text holds a checkout link, and paying it marks the account recovered.
+Click a row. Nexus Cloud rings that phone. Press Answer, allow the microphone, say hello. The agent stays quiet until it hears a greeting, then introduces itself once and pulls the account. Talk the way that customer would. When the agent sends a payment link, switch to the Messages tab on the same phone. The text holds a checkout link, and paying it marks the account recovered.
 
 Run Simulation on a row runs the same tools with no microphone and no Bolna call. Call my phone dials an allowlisted handset only.
 
