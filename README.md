@@ -39,11 +39,11 @@ Two layers, per the design spec:
 
 ## Live Demo (hosted)
 
-Docker app on AWS: https://d2ncaw9vlxv1qz.cloudfront.net
+Docker app on AWS (AWS credits, $0 GCP): http://nexuscloud-recovery.us-east-1.elasticbeanstalk.com
 
 Open it, hit Trigger on any row, Send payment link, open the checkout URL, tap Pay.
-No keys or phone needed. The Trigger modal's Live Call button places a real
-Bolna call to an allowlisted test number and polls the transcript back in.
+No keys or phone needed for the checkout. Plain HTTP — Beanstalk single-instance
+has no free HTTPS without a load balancer, so browsers show "Not secure".
 
 ## Setup & Run (< 2 minutes)
 
@@ -54,8 +54,8 @@ python3 -m src.runner serve     # http://localhost:8000 → Autopay Recovery Con
 ```
 
 Console: metric cards (Outstanding Dunning ARR / Accounts in Recovery / Recovery Rate),
-customer table, per-row **Trigger** modal (**Run Simulation** offline, **Live Call** with
-a test number), and a detail drawer (transcript, tool timeline, audio player).
+customer table, per-row **Trigger** modal (**Talk in browser**, **Run Simulation** offline,
+**Call my phone** for an allowlisted number), and a detail drawer (transcript, tool timeline, audio player).
 
 CLI:
 
