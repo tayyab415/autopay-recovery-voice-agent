@@ -39,8 +39,10 @@ Two layers, per the design spec:
 
 ## Live Demo (hosted)
 
-Was hosted on AWS for verification; the demo instance has been stopped to avoid
-idle charges. Run it locally in under 2 minutes (next section) — no keys needed.
+Docker app on AWS: http://nexuscloud-recovery.us-east-1.elasticbeanstalk.com
+
+Open it, hit Trigger on any row, Send payment link, open the checkout URL, tap Pay.
+No keys or phone needed.
 
 ## Setup & Run (< 2 minutes)
 
