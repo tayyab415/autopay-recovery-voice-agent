@@ -39,10 +39,8 @@ Two layers, per the design spec:
 
 ## Live Demo (hosted)
 
-Console, hosted on AWS with HTTPS: https://nexuscloud-recovery.s3.amazonaws.com/index.html
-
-Open it, hit Trigger on any row, Send payment link, open the checkout URL, tap Pay.
-No keys or phone needed.
+Was hosted on AWS for verification; the demo instance has been stopped to avoid
+idle charges. Run it locally in under 2 minutes (next section) — no keys needed.
 
 ## Setup & Run (< 2 minutes)
 
