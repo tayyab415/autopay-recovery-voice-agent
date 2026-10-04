@@ -4,11 +4,11 @@ My submission for the voice-agent option of the Forward-Deployed Engineer take-h
 
 ## What the brief asked for
 
-One working build, setup notes, no real customer data or secrets in the repo. I took the autopay recovery agent.
+One working build, setup notes, no real customer data or secrets in the repo. I chose the autopay recovery agent.
 
 - Ten fictional accounts live in `data/customers.json`.
 - A judge can run the whole thing end to end. The hosted console places the call, the agent uses merchant tools while the person is still talking, and a mock checkout marks the account recovered.
-- Calls go only to a number I control. Outbound dialing is allowlisted. Judges can also pick up a phone drawn right on the console, so the demo never needs their number.
+- Live demo calls are rate-limited (one per number per day, ten a day). Setting `CALL_ALLOWLIST` restricts them to your own numbers instead. Judges can also pick up a phone drawn right on the console, so the demo never needs their number.
 - No API keys, passwords, or card data in this repo. Keys stay in the server environment.
 
 ## Try it
@@ -36,8 +36,6 @@ No SIM, no real number, no telecom. The phone on the right is a full simulation 
 **Its links work.** Each text carries an Open-checkout hyperlink. Tapping it opens the mock checkout with the right customer, amount, and failure. Tapping Pay marks the account recovered, and the table status flips. Ask for the link twice and you get the same URL back, not a second text, exactly like a real sender's duplicate handling.
 
 Run Simulation skips the phone entirely and runs the same tools headless. The drawer on each row keeps the transcript, the tool timeline, and the recording for whatever path you took.
-
-Run Simulation on a row runs the same tools with no microphone and no Bolna call. Call my phone dials an allowlisted handset only.
 
 The ledger is in memory. A restart, including Cloud Run scaling to zero, puts all ten accounts back to their starting state.
 
@@ -90,7 +88,7 @@ A payment link is stored as a message on that customer's console phone. Asking f
 
 ## Evidence
 
-Judge it on the console call for Priya Sharma, execution `3e7ce7ba-feb6-4ef6-8416-bc0f38d2f0ad`. She said hello, the agent pulled the account, she asked for SMS, the gateway accepted the link, and the account moved to `LINK_SENT`. Transcript and recording URL are in `demo/live_call_app_e2e.json`.
+Judge the loop on the console call for Priya Sharma, execution `3e7ce7ba-feb6-4ef6-8416-bc0f38d2f0ad`. She said hello, the agent pulled the account, she asked for SMS, the gateway accepted the link, and the account moved to `LINK_SENT`. Transcript and recording URL are in `demo/live_call_app_e2e.json`. That call ran on the previous brain; the current one is GPT-6 Luna on my own key, exercised without a phone in `demo/brain_adversarial_gpt6luna.md` (9 probes) and `demo/live_call_gpt6luna.md` (live voice proof).
 
 The older live files in `demo/` predate the finished tool arguments. Use the console call above.
 
