@@ -15,6 +15,8 @@ One working build, setup notes, no real customer data or secrets in the repo. I 
 
 https://autopay-recovery-1027824348124.us-central1.run.app
 
+Video walkthrough (2 min), where I demo the console, a live call with the tool firing mid-conversation, and the technical thinking from the sections below: https://storage.googleapis.com/nexuscloud-recovery-walkthrough/walkthrough.mp4
+
 ### 2 ways to test the app
 
 **1. Free, no phone.** Hit Trigger on any row: Run Simulation, fire the tool buttons, open the checkout link, tap Pay. Nothing leaves the page. Start here.
