@@ -1,0 +1,13 @@
+{
+  "notice": "LIVE end-to-end placed THROUGH the app console path (server-side outbound, allowlisted)",
+  "execution_id": "3e7ce7ba-feb6-4ef6-8416-bc0f38d2f0ad",
+  "agent_id": "46ea7e2b-66b5-4fba-84c4-cb9c03d6334d",
+  "status": "completed",
+  "customer_id": "CUST-01",
+  "conversation_duration_sec": 62.0,
+  "total_cost": 9.0,
+  "recording_url": "https://api.bolna.ai/recordings/call/3e7ce7ba-feb6-4ef6-8416-bc0f38d2f0ad",
+  "transcript": "user:  hello\nassistant: Hi Priya Sharma, this is Nexus Cloud calling about a failed autopay of Rs. 12499.0 due to an expired card. Do you have a minute? Let me check your account details now.\nassistant:  The card on file is expired, so I can send you a fresh checkout link to update your payment. Would you prefer to receive it via SMS or WhatsApp?\nuser:  alright your sms\nassistant: Sending one secure payment link now.\nassistant:  The payment link has been sent to your phone via SMS. You can pay Rs. 12499 securely at pay.nexuscloud.io within 24 hours.\nuser:  yeah thank you\nassistant: You're welcome, Priya! If you need any more help, feel free to reach out. Have a great day!\n",
+  "server_status_after": "LINK_SENT",
+  "created_at": "2026-10-04T05:34:09.985984+00:00"
+}

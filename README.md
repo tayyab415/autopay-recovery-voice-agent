@@ -42,7 +42,8 @@ Two layers, per the design spec:
 Docker app on AWS: http://nexuscloud-recovery.us-east-1.elasticbeanstalk.com
 
 Open it, hit Trigger on any row, Send payment link, open the checkout URL, tap Pay.
-No keys or phone needed.
+No keys or phone needed. The Trigger modal's Live Call button places a real
+Bolna call to an allowlisted test number and polls the transcript back in.
 
 ## Setup & Run (< 2 minutes)
 
